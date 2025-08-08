@@ -58,6 +58,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - "5002:80"
+    command: ["./daprd", "-app-id", "shippingservice", "-app-port", "80", "-dapr-http-port", "3501", "-components-path", "/components", "--", "dotnet", "ShippingService.dll"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/healthz"]
       interval: 10s
@@ -84,6 +85,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - "5103:80"
+    command: ["./daprd", "-app-id", "notificationservice", "-app-port", "80", "-dapr-http-port", "3502", "-components-path", "/components", "--", "dotnet", "NotificationService.dll"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/healthz"]
       interval: 10s
