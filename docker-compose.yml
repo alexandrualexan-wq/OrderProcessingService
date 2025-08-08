@@ -2,6 +2,10 @@
 version: '3.4'
 
 services:
+  placement:
+    image: "daprio/dapr"
+    command: ["./placement", "-port", "50005"]
+
   zookeeper:
     image: confluentinc/cp-zookeeper:7.3.0
     environment:
@@ -34,6 +38,7 @@ services:
       - kafka
     environment:
       - DAPR_HTTP_PORT=3500
+      - DAPR_GRPC_PORT=50001
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/healthz"]
       interval: 10s
@@ -46,6 +51,8 @@ services:
       "-app-id", "orderservice",
       "-app-port", "80",
       "-dapr-http-port", "3500",
+      "-dapr-grpc-port", "50001",
+      "-placement-host-address", "placement:50005",
       "-components-path", "/components"]
     volumes:
       - "./components/:/components"
@@ -62,6 +69,7 @@ services:
       - "5002:80"
     environment:
       - DAPR_HTTP_PORT=3501
+      - DAPR_GRPC_PORT=50002
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/healthz"]
       interval: 10s
@@ -74,6 +82,8 @@ services:
       "-app-id", "shippingservice",
       "-app-port", "80",
       "-dapr-http-port", "3501",
+      "-dapr-grpc-port", "50002",
+      "-placement-host-address", "placement:50005",
       "-components-path", "/components"]
     volumes:
       - "./components/:/components"
@@ -90,6 +100,7 @@ services:
       - "5103:80"
     environment:
       - DAPR_HTTP_PORT=3502
+      - DAPR_GRPC_PORT=50003
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/healthz"]
       interval: 10s
@@ -102,6 +113,8 @@ services:
       "-app-id", "notificationservice",
       "-app-port", "80",
       "-dapr-http-port", "3502",
+      "-dapr-grpc-port", "50003",
+      "-placement-host-address", "placement:50005",
       "-components-path", "/components"]
     volumes:
       - "./components/:/components"
