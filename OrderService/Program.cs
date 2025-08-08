@@ -17,6 +17,8 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 app.MapControllers();
 
+app.MapGet("/healthz", () => "OK");
+
 app.Run();
 
 // 2. DEFINE SERVICES AND CLASSES (Must come after top-level statements)

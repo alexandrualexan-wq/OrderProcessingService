@@ -17,6 +17,8 @@ app.UseCloudEvents();
 app.MapSubscribeHandler();
 app.MapControllers();
 
+app.MapGet("/healthz", () => "OK");
+
 app.Run();
 
 // 2. DEFINE MODELS AND DBCONTEXT (Must come after top-level statements)

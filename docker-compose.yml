@@ -32,6 +32,11 @@ services:
       - "5001:80"
     depends_on:
       - kafka
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/healthz"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
 
   orderservice-dapr:
     image: "daprio/daprd:latest"
@@ -43,7 +48,8 @@ services:
     volumes:
       - "./components/:/components"
     depends_on:
-      - orderservice
+      orderservice:
+        condition: service_healthy
     network_mode: "service:orderservice"
 
   shippingservice:
@@ -52,6 +58,11 @@ services:
       dockerfile: Dockerfile
     ports:
       - "5002:80"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/healthz"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
 
   shippingservice-dapr:
     image: "daprio/daprd:latest"
@@ -63,7 +74,8 @@ services:
     volumes:
       - "./components/:/components"
     depends_on:
-      - shippingservice
+      shippingservice:
+        condition: service_healthy
     network_mode: "service:shippingservice"
 
   notificationservice:
@@ -72,6 +84,11 @@ services:
       dockerfile: Dockerfile
     ports:
       - "5103:80"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/healthz"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
 
   notificationservice-dapr:
     image: "daprio/daprd:latest"
@@ -83,5 +100,6 @@ services:
     volumes:
       - "./components/:/components"
     depends_on:
-      - notificationservice
+      notificationservice:
+        condition: service_healthy
     network_mode: "service:notificationservice"
