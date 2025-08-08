@@ -39,11 +39,6 @@ services:
     environment:
       - DAPR_HTTP_PORT=3500
       - DAPR_GRPC_PORT=50001
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/healthz"]
-      interval: 10s
-      timeout: 10s
-      retries: 5
 
   orderservice-dapr:
     image: "daprio/daprd:latest"
@@ -57,8 +52,7 @@ services:
     volumes:
       - "./components/:/components"
     depends_on:
-      orderservice:
-        condition: service_healthy
+      - orderservice
     network_mode: "service:orderservice"
 
   shippingservice:
