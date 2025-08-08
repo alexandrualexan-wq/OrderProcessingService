@@ -1,0 +1,70 @@
+
+version: '3.4'
+
+services:
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+
+  orderservice:
+    build:
+      context: ./OrderService
+      dockerfile: Dockerfile
+    ports:
+      - "5001:80"
+    depends_on:
+      - redis
+
+  orderservice-dapr:
+    image: "daprio/daprd:latest"
+    command: ["./daprd",
+      "-app-id", "orderservice",
+      "-app-port", "80",
+      "-dapr-http-port", "3500",
+      "-components-path", "/components"]
+    volumes:
+      - "./components/:/components"
+    depends_on:
+      - orderservice
+    network_mode: "service:orderservice"
+
+  shippingservice:
+    build:
+      context: ./ShippingService
+      dockerfile: Dockerfile
+    ports:
+      - "5002:80"
+
+  shippingservice-dapr:
+    image: "daprio/daprd:latest"
+    command: ["./daprd",
+      "-app-id", "shippingservice",
+      "-app-port", "80",
+      "-dapr-http-port", "3501",
+      "-components-path", "/components"]
+    volumes:
+      - "./components/:/components"
+    depends_on:
+      - shippingservice
+    network_mode: "service:shippingservice"
+
+  notificationservice:
+    build:
+      context: ./NotificationService
+      dockerfile: Dockerfile
+    ports:
+      - "5103:80"
+
+  notificationservice-dapr:
+    image: "daprio/daprd:latest"
+    command: ["./daprd",
+      "-app-id", "notificationservice",
+      "-app-port", "80",
+      "-dapr-http-port", "3502",
+      "-components-path", "/components"]
+    volumes:
+      - "./components/:/components"
+    depends_on:
+      - notificationservice
+    network_mode: "service:notificationservice"
