@@ -8,6 +8,8 @@ spec:
   version: v1
   metadata:
   - name: brokers
-    value: localhost:9092
+    value: kafka:9092
   - name: authRequired
     value: "false"
+  - name: kafka-version
+    value: "3.4.0"
