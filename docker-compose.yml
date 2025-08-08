@@ -32,6 +32,8 @@ services:
       - "5001:80"
     depends_on:
       - kafka
+    environment:
+      - DAPR_HTTP_PORT=3500
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/healthz"]
       interval: 10s
@@ -58,7 +60,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "5002:80"
-    command: ["./daprd", "-app-id", "shippingservice", "-app-port", "80", "-dapr-http-port", "3501", "-components-path", "/components", "--", "dotnet", "ShippingService.dll"]
+    environment:
+      - DAPR_HTTP_PORT=3501
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/healthz"]
       interval: 10s
@@ -85,7 +88,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "5103:80"
-    command: ["./daprd", "-app-id", "notificationservice", "-app-port", "80", "-dapr-http-port", "3502", "-components-path", "/components", "--", "dotnet", "NotificationService.dll"]
+    environment:
+      - DAPR_HTTP_PORT=3502
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/healthz"]
       interval: 10s
