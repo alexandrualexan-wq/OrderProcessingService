@@ -8,6 +8,8 @@ The system is designed to be run locally with Docker Compose and is structured f
 
 The architecture consists of three microservices communicating indirectly through a Dapr pub/sub message broker (Redis for local development). This decoupled design is resilient, scalable, and extensible.
 
+![High-Level Architecture](docs/highLevelArhitecture.png)
+
 ```mermaid
 graph TD
     subgraph "Container Environment (Azure Container Apps / Docker)"
