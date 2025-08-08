@@ -17,7 +17,6 @@ public class ShipmentsController : ControllerBase
         _logger = logger;
     }
 
-    [Topic("pubsub", "orders")]
     [HttpPost("/orders")] // Route for Dapr to post to
     public async Task<IActionResult> CreateShipmentFromOrder(Order order)
     {
