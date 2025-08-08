@@ -17,6 +17,7 @@ public class NotificationsController : ControllerBase
         _logger = logger;
     }
 
+    [Topic("pubsub", "orders", "notification-service")]
     [HttpPost("/orders")] // Route for Dapr to post to
     public async Task<IActionResult> CreateNotificationFromOrder(Order order)
     {
