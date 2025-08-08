@@ -11,5 +11,3 @@ spec:
     value: kafka:9092
   - name: authRequired
     value: "false"
-  - name: kafka-version
-    value: "3.4.0"
