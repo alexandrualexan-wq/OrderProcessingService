@@ -1,8 +1,11 @@
 
+using System.ComponentModel.DataAnnotations;
+
 namespace OrderService;
 
 public class Order
 {
+    [Key]
     public Guid OrderId { get; set; }
     public string? CustomerName { get; set; }
     public List<OrderItem> Items { get; set; } = new();
@@ -12,6 +15,8 @@ public class Order
 
 public class OrderItem
 {
+    [Key]
+    public Guid OrderItemId { get; set; }
     public string? ProductId { get; set; }
     public string? ProductName { get; set; }
     public int Quantity { get; set; }
