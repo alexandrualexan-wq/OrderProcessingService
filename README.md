@@ -6,7 +6,7 @@ The system is designed to be run locally with Docker Compose and is structured f
 
 ## Architecture
 
-The architecture consists of three microservices communicating indirectly through a Dapr pub/sub message broker (Redis for local development). This decoupled design is resilient, scalable, and extensible.
+The architecture consists of three microservices communicating indirectly through a Dapr pub/sub message broker (Apache Kafka for local development). This decoupled design is resilient, scalable, and extensible.
 
 ![High-Level Architecture](docs/highLevelArhitecture.png)
 
@@ -42,7 +42,7 @@ graph TD
             NotificationService_Dapr --> NotificationService_App
         end
 
-        PubSubBroker(("<br/><b>Dapr Pub/Sub<br/>Message Broker</b><br/>(e.g., Redis / Azure Service Bus)<br/><br/>"))
+        PubSubBroker(("<br/><b>Dapr Pub/Sub<br/>Message Broker</b><br/>(e.g., Apache Kafka / Azure Service Bus)<br/><br/>"))
 
     end
 
@@ -60,6 +60,14 @@ graph TD
     class OrderService_DB,ShippingService_DB,NotificationService_DB db;
     class PubSubBroker broker;
 ```
+
+### Dapr Pub/Sub Configuration
+
+The communication between services is handled by Dapr's pub/sub building block. Here are the key configuration details:
+
+*   **Pub/Sub Component Name**: The Dapr component for the message broker is named `pubsub`. This is defined in the `components/pubsub.yaml` file.
+
+*   **Topic Name**: All order-related events are published to the `orders` topic. The `OrderService` publishes to this topic, and both the `ShippingService` and `NotificationService` are subscribed to it.
 
 ### Components
 
@@ -96,7 +104,7 @@ To run this project locally, you will need:
     *   Build the Docker image for each of the three microservices.
     *   Start containers for each service.
     *   Start a Dapr sidecar container for each service.
-    *   Start a Redis container to act as the pub/sub message broker.
+    *   Start Kafka and Zookeeper containers to act as the pub/sub message broker.
 
 4.  **Observe the output** in your terminal. You will see interleaved logs from all services.
     *   `orderservice-1` will log "Published Order: ..." every second.
@@ -121,7 +129,7 @@ While the application is running, you can access the following endpoints in your
 ```
 /
 ├── components/
-│   └── pubsub.yaml         # Dapr component for Redis pub/sub
+│   └── pubsub.yaml         # Dapr component for Kafka pub/sub
 ├── OrderService/           # Publisher microservice
 │   ├── Dockerfile
 │   ├── OrderService.csproj
@@ -146,4 +154,4 @@ This project serves as the foundation for the "INTROSPECT 1 B" hands-on lab. The
 
 1.  **Build and Push Images**: Build the Docker images for each service and push them to a container registry like Azure Container Registry (ACR).
 2.  **Deploy to Azure Container Apps (ACA)**: Create an ACA environment and deploy the three services using the images from your ACR.
-3.  **Configure Dapr**: Enable Dapr in your ACA environment and configure a Dapr component for a cloud-native message broker like **Azure Service Bus** instead of Redis.
+3.  **Configure Dapr**: Enable Dapr in your ACA environment and configure a Dapr component for a cloud-native message broker like **Azure Service Bus** instead of Kafka.
