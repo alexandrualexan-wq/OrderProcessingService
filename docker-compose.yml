@@ -19,9 +19,10 @@ services:
       KAFKA_JMX_HOSTNAME: localhost
       KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:9093'
       KAFKA_NODE_ID: 1
+    CLUSTER_ID: 'a1b2c3d4-e5f6-7890-1234-567890abcdef'
     command: >
       bash -c "if [ ! -d /tmp/kraft-combined-logs ]; then
-        /bin/kafka-storage format --config /etc/kafka/kafka.properties --cluster-id CLUSTER_ID --ignore-formatted; 
+        /bin/kafka-storage format --config /etc/kafka/kafka.properties --cluster-id a1b2c3d4-e5f6-7890-1234-567890abcdef --ignore-formatted; 
       fi; 
       /etc/confluent/docker/run"
 
