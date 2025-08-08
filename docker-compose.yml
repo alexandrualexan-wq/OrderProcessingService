@@ -26,7 +26,7 @@ services:
     command: >
       bash -c "
         if [ ! -f /tmp/kraft-combined-logs/meta.properties ]; then
-          /bin/kafka-storage format --config /etc/kafka/kafka.properties --cluster-id $CLUSTER_ID --ignore-formatted;
+          /bin/kafka-storage format --config /etc/kafka/server.properties --cluster-id a1b2c3d4-e5f6-7890-1234-567890abcdef --ignore-formatted;
         fi;
         /etc/confluent/docker/run"
 
