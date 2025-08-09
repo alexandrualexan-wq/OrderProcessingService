@@ -1,8 +1,11 @@
-
-
 version: '3.4'
 
 services:
+  dapr-dashboard:
+    image: "daprio/dashboard"
+    ports:
+      - "8080:8080"
+
   placement:
     image: "daprio/dapr"
     command: ["./placement", "-port", "50005"]
@@ -144,4 +147,3 @@ services:
       kafka:
         condition: service_healthy
     network_mode: "service:notificationservice"
-
