@@ -7,7 +7,6 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddDbContext<AppDbContext>(opt => opt.UseInMemoryDatabase("OrderDb"));
-builder.Services.AddDaprClient();
 builder.Services.AddHostedService<OrderGenerator>();
 
 builder.Services.AddControllers();
@@ -33,13 +32,11 @@ public class AppDbContext : DbContext
 public class OrderGenerator : BackgroundService
 {
     private readonly ILogger<OrderGenerator> _logger;
-    private readonly DaprClient _daprClient;
     private readonly IServiceProvider _serviceProvider;
 
-    public OrderGenerator(ILogger<OrderGenerator> logger, DaprClient daprClient, IServiceProvider serviceProvider)
+    public OrderGenerator(ILogger<OrderGenerator> logger, IServiceProvider serviceProvider)
     {
         _logger = logger;
-        _daprClient = daprClient;
         _serviceProvider = serviceProvider;
     }
 
@@ -62,9 +59,7 @@ public class OrderGenerator : BackgroundService
                 TotalAmount = 1225.50m
             };
 
-            // Publish the event
-            await _daprClient.PublishEventAsync("pubsub", "orders", order, stoppingToken);
-            _logger.LogInformation("Published Order: {OrderId}", order.OrderId);
+            _logger.LogInformation("Generated Order: {OrderId}", order.OrderId);
 
             // Save to in-memory database
             using (var scope = _serviceProvider.CreateScope())

@@ -17,30 +17,10 @@ public class ShipmentsController : ControllerBase
         _logger = logger;
     }
 
-    [Topic("pubsub", "orders", new[] { "shipping-service" })]
-    [HttpPost("/orders")] // Route for Dapr to post to
-    public async Task<IActionResult> CreateShipmentFromOrder(Order order)
-    {
-        _logger.LogInformation("Received Order: {OrderId}", order.OrderId);
-
-        var shipment = new Shipment
-        {
-            ShipmentId = Guid.NewGuid(),
-            OrderId = order.OrderId,
-            Status = "Preparing",
-            CreatedDate = DateTime.UtcNow
-        };
-
-        _dbContext.Shipments.Add(shipment);
-        await _dbContext.SaveChangesAsync();
-
-        _logger.LogInformation("Created Shipment: {ShipmentId} for Order: {OrderId}", shipment.ShipmentId, order.OrderId);
-        return Ok();
-    }
-
     [HttpGet]
     public async Task<IActionResult> Get()
     {
         return Ok(await _dbContext.Shipments.ToListAsync());
     }
 }
+

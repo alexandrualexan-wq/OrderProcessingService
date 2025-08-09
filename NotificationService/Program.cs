@@ -8,7 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<AppDbContext>(opt => opt.UseInMemoryDatabase("NotificationDb"));
 
 // Add Dapr integration for controllers
-builder.Services.AddControllers().AddDapr();
+builder.Services.AddControllers();
 
 var app = builder.Build();
 
