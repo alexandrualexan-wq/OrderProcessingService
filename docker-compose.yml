@@ -62,7 +62,6 @@ services:
     environment:
       - DAPR_HTTP_PORT=3500
       - DAPR_GRPC_PORT=50001
-      - DAPR_API_TOKEN=my-secret
     networks:
       - dapr-network
 
@@ -97,7 +96,6 @@ services:
     environment:
       - DAPR_HTTP_PORT=3501
       - DAPR_GRPC_PORT=50002
-      - DAPR_API_TOKEN=my-secret
     networks:
       - dapr-network
 
@@ -132,11 +130,6 @@ services:
     environment:
       - DAPR_HTTP_PORT=3502
       - DAPR_GRPC_PORT=50003
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/healthz"]
-      interval: 10s
-      timeout: 10s
-      retries: 5
     networks:
       - dapr-network
 
@@ -155,10 +148,8 @@ services:
     environment:
       - DAPR_API_TOKEN=my-secret
     depends_on:
-      notificationservice:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
+      - notificationservice
+      - kafka
     network_mode: "service:notificationservice"
 
 networks:
