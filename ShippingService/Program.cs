@@ -14,7 +14,6 @@ var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 app.UseCloudEvents();
-app.MapSubscribeHandler();
 app.MapControllers();
 
 app.MapGet("/healthz", () => "OK");
