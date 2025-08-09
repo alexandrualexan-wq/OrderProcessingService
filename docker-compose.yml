@@ -6,6 +6,8 @@ services:
     image: "daprio/dashboard"
     ports:
       - "8080:8080"
+    environment:
+      - DAPR_API_TOKEN=my-secret
     networks:
       - dapr-network
 
