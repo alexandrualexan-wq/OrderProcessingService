@@ -76,11 +76,12 @@ services:
       "-dapr-http-port", "3500",
       "-dapr-grpc-port", "50001",
       "-placement-host-address", "placement:50005",
-      "-components-path", "/components",
-      "--log-level", "debug",
-      "--dapr-api-token", "my-secret"]
+      "-resources-path", "/components",
+      "--log-level", "debug"]
     volumes:
       - "./components/:/components"
+    environment:
+      - DAPR_API_TOKEN=my-secret
     depends_on:
       orderservice:
         condition: service_healthy
@@ -116,11 +117,12 @@ services:
       "-dapr-http-port", "3501",
       "-dapr-grpc-port", "50002",
       "-placement-host-address", "placement:50005",
-      "-components-path", "/components",
-      "--log-level", "debug",
-      "--dapr-api-token", "my-secret"]
+      "-resources-path", "/components",
+      "--log-level", "debug"]
     volumes:
       - "./components/:/components"
+    environment:
+      - DAPR_API_TOKEN=my-secret
     depends_on:
       shippingservice:
         condition: service_healthy
@@ -156,11 +158,12 @@ services:
       "-dapr-http-port", "3502",
       "-dapr-grpc-port", "50003",
       "-placement-host-address", "placement:50005",
-      "-components-path", "/components",
-      "--log-level", "debug",
-      "--dapr-api-token", "my-secret"]
+      "-resources-path", "/components",
+      "--log-level", "debug"]
     volumes:
       - "./components/:/components"
+    environment:
+      - DAPR_API_TOKEN=my-secret
     depends_on:
       notificationservice:
         condition: service_healthy
