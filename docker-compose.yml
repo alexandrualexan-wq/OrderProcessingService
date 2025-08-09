@@ -6,11 +6,14 @@ services:
     image: "daprio/dashboard"
     ports:
       - "8080:8080"
-    network_mode: "host"
+    networks:
+      - dapr-network
 
   placement:
     image: "daprio/dapr"
     command: ["./placement", "-port", "50005"]
+    networks:
+      - dapr-network
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.3.0
@@ -19,6 +22,8 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
     ports:
       - "2181:2181"
+    networks:
+      - dapr-network
 
   kafka:
     image: confluentinc/cp-kafka:7.3.0
@@ -38,6 +43,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+    networks:
+      - dapr-network
 
   orderservice:
     build:
@@ -56,6 +63,8 @@ services:
       interval: 10s
       timeout: 10s
       retries: 5
+    networks:
+      - dapr-network
 
   orderservice-dapr:
     image: "daprio/daprd:latest"
@@ -93,6 +102,8 @@ services:
       interval: 10s
       timeout: 10s
       retries: 5
+    networks:
+      - dapr-network
 
   shippingservice-dapr:
     image: "daprio/daprd:latest"
@@ -130,6 +141,8 @@ services:
       interval: 10s
       timeout: 10s
       retries: 5
+    networks:
+      - dapr-network
 
   notificationservice-dapr:
     image: "daprio/daprd:latest"
@@ -149,3 +162,6 @@ services:
       kafka:
         condition: service_healthy
     network_mode: "service:notificationservice"
+
+networks:
+  dapr-network:
