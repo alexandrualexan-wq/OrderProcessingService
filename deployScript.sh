@@ -20,8 +20,9 @@ ACR_NAME="alxintro1"
 # Azure Container Apps environment name
 CONTAINERAPPS_ENVIRONMENT="alx-container-apps-environment"
 
-# Azure Cache for Redis name
-REDIS_NAME="alxintro1redis"
+# Kafka broker addresses
+# Replace with your actual Kafka broker addresses
+KAFKA_BROKERS="your-kafka-broker:9092"
 
 # Application names
 ORDER_SERVICE_APP_NAME="order-service"
@@ -30,7 +31,7 @@ NOTIFICATION_SERVICE_APP_NAME="notification-service"
 
 # Dapr component configuration
 DAPR_PUBSUB_COMPONENT_NAME="pubsub"
-DAPR_COMPONENT_YAML_FILE="dapr-redis-pubsub.yaml"
+DAPR_COMPONENT_YAML_FILE="dapr-kafka-pubsub.yaml"
 
 
 # --- 0. Build Local Docker Images ---
@@ -74,25 +75,6 @@ docker push "$ACR_NAME.azurecr.io/notification-service:v1"
 echo "Docker images pushed successfully to ACR."
 
 
-# --- 1.5. Create Azure Cache for Redis ---
-echo "Creating Azure Cache for Redis: $REDIS_NAME"
-az redis create \
-  --name "$REDIS_NAME" \
-  --resource-group "$RESOURCE_GROUP" \
-  --location "$LOCATION" \
-  --sku Basic \
-  --vm-size c0
-
-echo "Getting Azure Cache for Redis primary key..."
-REDIS_PRIMARY_KEY=$(az redis list-keys \
-  --name "$REDIS_NAME" \
-  --resource-group "$RESOURCE_GROUP" \
-  --query primaryKey \
-  --output tsv)
-
-REDIS_HOST="$REDIS_NAME.redis.cache.windows.net:6380"
-
-
 # --- 2. Create Container App Environment ---
 # This section creates the Azure Container Apps environment where the services will be deployed.
 
@@ -115,23 +97,23 @@ az containerapp env create \
 echo "Container Apps environment created successfully."
 
 
-# --- 3. Configure Dapr Redis Pub/Sub Component ---
+# --- 3. Configure Dapr Kafka Pub/Sub Component ---
 # This section configures a Dapr pub/sub component for the Container Apps environment.
 
-echo "Creating Dapr Redis pub/sub component YAML file..."
+echo "Creating Dapr Kafka pub/sub component YAML file..."
 cat <<EOF > "$DAPR_COMPONENT_YAML_FILE"
 apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
   name: pubsub
 spec:
-  type: pubsub.redis
+  type: pubsub.kafka
   version: v1
   metadata:
-  - name: redisHost
-    value: "$REDIS_HOST"
-  - name: redisPassword
-    value: "$REDIS_PRIMARY_KEY"
+  - name: brokers
+    value: "$KAFKA_BROKERS"
+  - name: authType
+    value: "none"
 scopes:
 - $ORDER_SERVICE_APP_NAME
 - $SHIPPING_SERVICE_APP_NAME
