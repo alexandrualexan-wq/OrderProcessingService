@@ -102,18 +102,13 @@ echo "Container Apps environment created successfully."
 
 echo "Creating Dapr Kafka pub/sub component YAML file..."
 cat <<EOF > "$DAPR_COMPONENT_YAML_FILE"
-apiVersion: dapr.io/v1alpha1
-kind: Component
+componentType: pubsub.kafka
+version: v1
 metadata:
-  name: pubsub
-spec:
-  type: pubsub.kafka
-  version: v1
-  metadata:
-  - name: brokers
-    value: "$KAFKA_BROKERS"
-  - name: authType
-    value: "none"
+- name: brokers
+  value: "$KAFKA_BROKERS"
+- name: authType
+  value: "none"
 scopes:
 - $ORDER_SERVICE_APP_NAME
 - $SHIPPING_SERVICE_APP_NAME
