@@ -127,12 +127,12 @@ az containerapp create \
   --resource-group "$RESOURCE_GROUP" \
   --environment "$CONTAINERAPPS_ENVIRONMENT" \
   --image "$ACR_NAME.azurecr.io/order-service:v1" \
-  --target-port 80 \
+  --target-port 8080 \
   --ingress 'external' \
   --registry-server "$ACR_NAME.azurecr.io" \
   --enable-dapr \
   --dapr-app-id "$ORDER_SERVICE_APP_NAME" \
-  --dapr-app-port 80
+  --dapr-app-port 8080
 
 echo "Deploying Shipping Service..."
 az containerapp create \
@@ -140,12 +140,12 @@ az containerapp create \
   --resource-group "$RESOURCE_GROUP" \
   --environment "$CONTAINERAPPS_ENVIRONMENT" \
   --image "$ACR_NAME.azurecr.io/shipping-service:v1" \
-  --target-port 80 \
+  --target-port 8080 \
   --ingress 'internal' \
   --registry-server "$ACR_NAME.azurecr.io" \
   --enable-dapr \
   --dapr-app-id "$SHIPPING_SERVICE_APP_NAME" \
-  --dapr-app-port 80
+  --dapr-app-port 8080
 
 echo "Deploying Notification Service..."
 az containerapp create \
@@ -153,11 +153,11 @@ az containerapp create \
   --resource-group "$RESOURCE_GROUP" \
   --environment "$CONTAINERAPPS_ENVIRONMENT" \
   --image "$ACR_NAME.azurecr.io/notification-service:v1" \
-  --target-port 80 \
+  --target-port 8080 \
   --ingress 'internal' \
   --registry-server "$ACR_NAME.azurecr.io" \
   --enable-dapr \
   --dapr-app-id "$NOTIFICATION_SERVICE_APP_NAME" \
-  --dapr-app-port 80
+  --dapr-app-port 8080
 
 echo "Deployment complete!"
