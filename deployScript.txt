@@ -1,0 +1,164 @@
+# --- Configuration Variables ---
+RESOURCE_GROUP="alx-intro1-rg"
+LOCATION="eastus2"
+LOG_ANALYTICS_WORKSPACE="alx-analytics-workspace"
+ACR_NAME="alxintro1"
+CONTAINERAPPS_ENVIRONMENT="alx-container-apps-environment"
+
+
+# App Names
+ORDER_SERVICE_APP_NAME="order-service"
+SHIPPING_SERVICE_APP_NAME="shipping-service"
+NOTIFICATION_SERVICE_APP_NAME="notification-service"
+
+
+# Dapr Component
+DAPR_PUBSUB_COMPONENT_NAME="pubsub"
+DAPR_COMPONENT_YAML_FILE="dapr-inmemory-pubsub.yaml"
+
+
+
+
+# --- 0. Build Local Docker Images ---
+echo "Building local Docker images..."
+docker build -t order-service:latest ./OrderService
+docker build -t shipping-service:latest ./ShippingService
+docker build -t notification-service:latest ./NotificationService
+
+
+
+
+# --- 1. Create Azure Resources & Push Images ---
+
+
+echo "Creating resource group: $RESOURCE_GROUP"
+az group create \
+  --name "$RESOURCE_GROUP" \
+  --location "$LOCATION"
+
+
+echo "Creating Azure Container Registry (ACR)..."
+az acr create \
+  --resource-group "$RESOURCE_GROUP" \
+  --name "$ACR_NAME" \
+  --sku Basic \
+  --admin-enabled true
+
+
+echo "Logging into ACR..."
+az acr login --name $ACR_NAME
+
+
+echo "Tagging and pushing order-service..."
+docker tag order-service:latest $ACR_NAME.azurecr.io/order-service:v1
+docker push $ACR_NAME.azurecr.io/order-service:v1
+
+
+echo "Tagging and pushing shipping-service..."
+docker tag shipping-service:latest $ACR_NAME.azurecr.io/shipping-service:v1
+docker push $ACR_NAME.azurecr.io/shipping-service:v1
+
+
+echo "Tagging and pushing notification-service..."
+docker tag notification-service:latest $ACR_NAME.azurecr.io/notification-service:v1
+docker push $ACR_NAME.azurecr.io/notification-service:v1
+
+
+
+
+# --- 2. Create Container App Environment ---
+
+
+echo "Creating Log Analytics workspace..."
+az monitor log-analytics workspace create \
+  --resource-group $RESOURCE_GROUP \
+  --workspace-name $LOG_ANALYTICS_WORKSPACE
+
+
+echo "Fetching Log Analytics credentials..."
+LOG_ANALYTICS_WORKSPACE_CLIENT_ID=$(az monitor log-analytics workspace show --query customerId -g $RESOURCE_GROUP -n $LOG_ANALYTICS_WORKSPACE --out tsv)
+LOG_ANALYTICS_WORKSPACE_CLIENT_SECRET=$(az monitor log-analytics workspace get-shared-keys --query primarySharedKey -g $RESOURCE_GROUP -n $LOG_ANALYTICS_WORKSPACE --out tsv)
+
+
+echo "Creating Container Apps environment..."
+az containerapp env create \
+  --name $CONTAINERAPPS_ENVIRONMENT \
+  --resource-group $RESOURCE_GROUP \
+  --location "$LOCATION" \
+  --logs-workspace-id $LOG_ANALYTICS_WORKSPACE_CLIENT_ID \
+  --logs-workspace-key $LOG_ANALYTICS_WORKSPACE_CLIENT_SECRET
+
+
+
+
+# --- 3. Configure Dapr In-Memory Pub/Sub Component ---
+
+
+echo "Creating Dapr in-memory pub/sub component YAML file..."
+cat <<EOF > $DAPR_COMPONENT_YAML_FILE
+componentType: pubsub.in-memory
+version: v1
+metadata: []
+scopes:
+- $ORDER_SERVICE_APP_NAME
+- $SHIPPING_SERVICE_APP_NAME
+- $NOTIFICATION_SERVICE_APP_NAME
+EOF
+
+
+echo "Setting Dapr pub/sub component..."
+az containerapp env dapr-component set \
+  --name $CONTAINERAPPS_ENVIRONMENT \
+  --resource-group $RESOURCE_GROUP \
+  --dapr-component-name $DAPR_PUBSUB_COMPONENT_NAME \
+  --yaml $DAPR_COMPONENT_YAML_FILE
+
+
+
+
+# --- 4. Deploy Services to Azure Container Apps ---
+
+
+echo "Deploying Order Service..."
+az containerapp create \
+  --name $ORDER_SERVICE_APP_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --environment $CONTAINERAPPS_ENVIRONMENT \
+  --image "$ACR_NAME.azurecr.io/order-service:v1" \
+  --target-port 8080 \
+  --ingress 'external' \
+  --registry-server "$ACR_NAME.azurecr.io" \
+  --enable-dapr \
+  --dapr-app-id $ORDER_SERVICE_APP_NAME \
+  --dapr-app-port 8080
+
+
+echo "Deploying Shipping Service..."
+az containerapp create \
+  --name $SHIPPING_SERVICE_APP_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --environment $CONTAINERAPPS_ENVIRONMENT \
+  --image "$ACR_NAME.azurecr.io/shipping-service:v1" \
+  --target-port 8080 \
+  --ingress 'internal' \
+  --registry-server "$ACR_NAME.azurecr.io" \
+  --enable-dapr \
+  --dapr-app-id $SHIPPING_SERVICE_APP_NAME \
+  --dapr-app-port 8080
+
+
+echo "Deploying Notification Service..."
+az containerapp create \
+  --name $NOTIFICATION_SERVICE_APP_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --environment $CONTAINERAPPS_ENVIRONMENT \
+  --image "$ACR_NAME.azurecr.io/notification-service:v1" \
+  --target-port 8080 \
+  --ingress 'internal' \
+  --registry-server "$ACR_NAME.azurecr.io" \
+  --enable-dapr \
+  --dapr-app-id $NOTIFICATION_SERVICE_APP_NAME \
+  --dapr-app-port 8080
+
+
+echo "Deployment complete!"
