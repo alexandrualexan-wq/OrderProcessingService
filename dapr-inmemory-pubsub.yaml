@@ -1,0 +1,7 @@
+componentType: pubsub.in-memory
+version: v1
+metadata: []
+scopes:
+- order-service
+- shipping-service
+- notification-service
