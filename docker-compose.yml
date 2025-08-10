@@ -34,9 +34,15 @@ services:
     depends_on:
       - redis
     environment:
+      - ASPNETCORE_URLS=http://+:80
       - DAPR_HTTP_PORT=3500
       - DAPR_GRPC_PORT=50001
       - DAPR_API_TOKEN=my-secret
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/healthz"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
     networks:
       - dapr-network
 
@@ -55,7 +61,8 @@ services:
     environment:
       - DAPR_API_TOKEN=my-secret
     depends_on:
-      - orderservice
+      orderservice:
+        condition: service_healthy
     network_mode: "service:orderservice"
 
   shippingservice:
@@ -67,9 +74,15 @@ services:
     depends_on:
       - redis
     environment:
+      - ASPNETCORE_URLS=http://+:80
       - DAPR_HTTP_PORT=3501
       - DAPR_GRPC_PORT=50002
       - DAPR_API_TOKEN=my-secret
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/healthz"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
     networks:
       - dapr-network
 
@@ -88,7 +101,8 @@ services:
     environment:
       - DAPR_API_TOKEN=my-secret
     depends_on:
-      - shippingservice
+      shippingservice:
+        condition: service_healthy
     network_mode: "service:shippingservice"
 
   notificationservice:
@@ -103,6 +117,7 @@ services:
       - ASPNETCORE_URLS=http://+:80
       - DAPR_HTTP_PORT=3502
       - DAPR_GRPC_PORT=50003
+      - DAPR_API_TOKEN=my-secret
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/healthz"]
       interval: 10s
