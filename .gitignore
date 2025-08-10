@@ -1,0 +1,68 @@
+# Visual Studio Code
+.vscode/
+
+# User-specific files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+[Bb]in/
+[Oo]bj/
+[Ww]eb/[Bb]in/
+[Ww]eb/[Oo]bj/
+
+# Visual Studio 2015 cache/options directory
+.vs/
+
+# MSTest test Results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+
+# NUnit
+*.VisualState.xml
+TestResult.xml
+
+# Build Results of an ATL Project
+[Dd]ebugPS/
+[Rr]eleasePS/
+dlldata.c
+
+# Benchmark Results
+BenchmarkDotNet.Artifacts/
+
+# Roslyn analyzers
+*.ruleset
+
+# Temporary files
+*.tmp
+*.temp
+*~
+
+# NuGet Packages
+*.nupkg
+*.snupkg
+/packages/*
+!/packages/repositories.config
+
+# Dotnet Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# StyleCop
+StyleCopReport.xml
+
+# ReSharper
+_ReSharper*/
+*.[Rr]eSharper
+*.DotSettings.user
+
+# Rider
+.idea/
+
+# Mac/Linux
+*.DS_Store
