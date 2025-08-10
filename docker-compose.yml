@@ -89,7 +89,7 @@ services:
       - DAPR_API_TOKEN=my-secret
     depends_on:
       - shippingservice
-    network_.mode: "service:shippingservice"
+    network_mode: "service:shippingservice"
 
   notificationservice:
     build:
