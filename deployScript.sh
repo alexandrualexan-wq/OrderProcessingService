@@ -20,6 +20,9 @@ ACR_NAME="alxintro1"
 # Azure Container Apps environment name
 CONTAINERAPPS_ENVIRONMENT="alx-container-apps-environment"
 
+# Azure Cache for Redis name
+REDIS_NAME="alxintro1redis"
+
 # Application names
 ORDER_SERVICE_APP_NAME="order-service"
 SHIPPING_SERVICE_APP_NAME="shipping-service"
@@ -27,7 +30,7 @@ NOTIFICATION_SERVICE_APP_NAME="notification-service"
 
 # Dapr component configuration
 DAPR_PUBSUB_COMPONENT_NAME="pubsub"
-DAPR_COMPONENT_YAML_FILE="dapr-storage-queues-pubsub.yaml"
+DAPR_COMPONENT_YAML_FILE="dapr-redis-pubsub.yaml"
 
 
 # --- 0. Build Local Docker Images ---
@@ -71,21 +74,23 @@ docker push "$ACR_NAME.azurecr.io/notification-service:v1"
 echo "Docker images pushed successfully to ACR."
 
 
-# --- 1.5. Create Azure Storage Account ---
-STORAGE_ACCOUNT_NAME="alxintro1storage$RANDOM"
-echo "Creating Azure Storage Account: $STORAGE_ACCOUNT_NAME"
-az storage account create \
-  --name "$STORAGE_ACCOUNT_NAME" \
+# --- 1.5. Create Azure Cache for Redis ---
+echo "Creating Azure Cache for Redis: $REDIS_NAME"
+az redis create \
+  --name "$REDIS_NAME" \
   --resource-group "$RESOURCE_GROUP" \
   --location "$LOCATION" \
-  --sku Standard_LRS
+  --sku Basic \
+  --vm-size c0
 
-echo "Getting Azure Storage Account connection string..."
-AZURE_STORAGE_CONNECTION_STRING=$(az storage account show-connection-string \
-  --name "$STORAGE_ACCOUNT_NAME" \
+echo "Getting Azure Cache for Redis primary key..."
+REDIS_PRIMARY_KEY=$(az redis list-keys \
+  --name "$REDIS_NAME" \
   --resource-group "$RESOURCE_GROUP" \
-  --query connectionString \
+  --query primaryKey \
   --output tsv)
+
+REDIS_HOST="$REDIS_NAME.redis.cache.windows.net:6380"
 
 
 # --- 2. Create Container App Environment ---
@@ -110,18 +115,18 @@ az containerapp env create \
 echo "Container Apps environment created successfully."
 
 
-# --- 3. Configure Dapr Azure Storage Queues Pub/Sub Component ---
+# --- 3. Configure Dapr Redis Pub/Sub Component ---
 # This section configures a Dapr pub/sub component for the Container Apps environment.
 
-echo "Creating Dapr Azure Storage Queues pub/sub component YAML file..."
+echo "Creating Dapr Redis pub/sub component YAML file..."
 cat <<EOF > "$DAPR_COMPONENT_YAML_FILE"
-componentType: pubsub.azure.storagequeues
+componentType: pubsub.redis
 version: v1
 metadata:
-- name: connectionString
-  value: "$AZURE_STORAGE_CONNECTION_STRING"
-- name: storageAccount
-  value: "$STORAGE_ACCOUNT_NAME"
+- name: redisHost
+  value: "$REDIS_HOST"
+- name: redisPassword
+  value: "$REDIS_PRIMARY_KEY"
 scopes:
 - $ORDER_SERVICE_APP_NAME
 - $SHIPPING_SERVICE_APP_NAME
