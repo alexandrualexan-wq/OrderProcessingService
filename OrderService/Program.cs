@@ -45,7 +45,7 @@ public class OrderGenerator : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        await Task.Delay(5000, stoppingToken); // Add a 5-second delay to allow the Dapr sidecar to initialize
+        await _daprClient.WaitForSidecarAsync(stoppingToken);
 
         while (!stoppingToken.IsCancellationRequested)
         {
