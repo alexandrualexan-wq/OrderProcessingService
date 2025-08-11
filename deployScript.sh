@@ -149,7 +149,7 @@ az containerapp create \
   --target-port 8080 \
   --ingress 'external' \
   --registry-server "$ACR_NAME.azurecr.io" \
-  --environment-variables "ASPNETCORE_URLS=http://+:8080" \
+  --env-vars "ASPNETCORE_URLS=http://+:8080" \
   --enable-dapr \
   --dapr-app-id "$ORDER_SERVICE_APP_NAME" \
   --dapr-app-port 8080
@@ -163,7 +163,7 @@ az containerapp create \
   --target-port 8080 \
   --ingress 'internal' \
   --registry-server "$ACR_NAME.azurecr.io" \
-  --environment-variables "ASPNETCORE_URLS=http://+:8080" \
+  --env-vars "ASPNETCORE_URLS=http://+:8080" \
   --enable-dapr \
   --dapr-app-id "$SHIPPING_SERVICE_APP_NAME" \
   --dapr-app-port 8080
@@ -177,7 +177,7 @@ az containerapp create \
   --target-port 8080 \
   --ingress 'internal' \
   --registry-server "$ACR_NAME.azurecr.io" \
-  --environment-variables "ASPNETCORE_URLS=http://+:8080" \
+  --env-vars "ASPNETCORE_URLS=http://+:8080" \
   --enable-dapr \
   --dapr-app-id "$NOTIFICATION_SERVICE_APP_NAME" \
   --dapr-app-port 8080
