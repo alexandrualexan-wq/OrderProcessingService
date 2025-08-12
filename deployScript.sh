@@ -108,7 +108,7 @@ az containerapp create \
   --target-port 2181 \
   --ingress 'internal' \
   --env-vars "ZOOKEEPER_CLIENT_PORT=2181" "ZOOKEEPER_TICK_TIME=2000" \
-  --probe-tcp-port 2181
+  --tcp-startup-probe-port 2181
 
 echo "Waiting for Zookeeper to be ready..."
 while [[ $(az containerapp show --name "$ZOOKEEPER_APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.provisioningState -o tsv) != "Succeeded" || $(az containerapp show --name "$ZOOKEEPER_APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.runningStatus -o tsv) != "Running" ]]; do
