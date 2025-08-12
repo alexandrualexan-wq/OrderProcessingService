@@ -24,10 +24,12 @@ CONTAINERAPPS_ENVIRONMENT="alx-container-apps-environment"
 ORDER_SERVICE_APP_NAME="order-service"
 SHIPPING_SERVICE_APP_NAME="shipping-service"
 NOTIFICATION_SERVICE_APP_NAME="notification-service"
+DAPR_DASHBOARD_APP_NAME="dapr-dashboard"
+REDIS_APP_NAME="redis"
 
 # Dapr component configuration
 DAPR_PUBSUB_COMPONENT_NAME="pubsub"
-DAPR_COMPONENT_YAML_FILE="dapr-inmemory-pubsub.yaml"
+DAPR_COMPONENT_YAML_FILE="dapr-redis-pubsub.yaml"
 
 
 # --- 0. Build Local Docker Images ---
@@ -93,16 +95,30 @@ az containerapp env create \
 echo "Container Apps environment created successfully."
 
 
-# --- 3. Configure Dapr In-Memory Pub/Sub Component ---
-# This section configures a Dapr pub/sub component for the Container Apps environment.
-# For this example, we are using an in-memory pub/sub component, which is suitable for testing and development.
-# For production, you would use a more robust component like Azure Service Bus or Redis.
+# --- 3. Deploy Redis Container ---
+# This section deploys the Redis container as a container app.
+echo "Deploying Redis container..."
+az containerapp create \
+  --name "$REDIS_APP_NAME" \
+  --resource-group "$RESOURCE_GROUP" \
+  --environment "$CONTAINERAPPS_ENVIRONMENT" \
+  --image "redis:latest" \
+  --target-port 6379 \
+  --ingress 'internal'
 
-echo "Creating Dapr in-memory pub/sub component YAML file..."
+
+# --- 4. Configure Dapr Redis Pub/Sub Component ---
+# This section configures a Dapr pub/sub component for the Container Apps environment.
+
+echo "Creating Dapr Redis pub/sub component YAML file..."
 cat <<EOF > "$DAPR_COMPONENT_YAML_FILE"
-componentType: pubsub.in-memory
+componentType: pubsub.redis
 version: v1
-metadata: []
+metadata:
+- name: redisHost
+  value: "$REDIS_APP_NAME:6379"
+- name: redisPassword
+  value: ""
 scopes:
 - $ORDER_SERVICE_APP_NAME
 - $SHIPPING_SERVICE_APP_NAME
@@ -118,7 +134,7 @@ az containerapp env dapr-component set \
 echo "Dapr component configured successfully."
 
 
-# --- 4. Deploy Services to Azure Container Apps ---
+# --- 5. Deploy Services to Azure Container Apps ---
 # This section deploys the services as container apps to the created environment.
 
 echo "Deploying Order Service..."
@@ -130,6 +146,7 @@ az containerapp create \
   --target-port 8080 \
   --ingress 'external' \
   --registry-server "$ACR_NAME.azurecr.io" \
+  --env-vars "ASPNETCORE_URLS=http://+:8080" \
   --enable-dapr \
   --dapr-app-id "$ORDER_SERVICE_APP_NAME" \
   --dapr-app-port 8080
@@ -143,6 +160,7 @@ az containerapp create \
   --target-port 8080 \
   --ingress 'internal' \
   --registry-server "$ACR_NAME.azurecr.io" \
+  --env-vars "ASPNETCORE_URLS=http://+:8080" \
   --enable-dapr \
   --dapr-app-id "$SHIPPING_SERVICE_APP_NAME" \
   --dapr-app-port 8080
@@ -156,8 +174,18 @@ az containerapp create \
   --target-port 8080 \
   --ingress 'internal' \
   --registry-server "$ACR_NAME.azurecr.io" \
+  --env-vars "ASPNETCORE_URLS=http://+:8080" \
   --enable-dapr \
   --dapr-app-id "$NOTIFICATION_SERVICE_APP_NAME" \
   --dapr-app-port 8080
+
+echo "Deploying Dapr Dashboard..."
+az containerapp create \
+  --name "$DAPR_DASHBOARD_APP_NAME" \
+  --resource-group "$RESOURCE_GROUP" \
+  --environment "$CONTAINERAPPS_ENVIRONMENT" \
+  --image "daprio/dashboard" \
+  --target-port 8080 \
+  --ingress 'external'
 
 echo "Deployment complete!"
