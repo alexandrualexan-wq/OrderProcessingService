@@ -25,11 +25,11 @@ ORDER_SERVICE_APP_NAME="order-service"
 SHIPPING_SERVICE_APP_NAME="shipping-service"
 NOTIFICATION_SERVICE_APP_NAME="notification-service"
 DAPR_DASHBOARD_APP_NAME="dapr-dashboard"
-MOSQUITTO_APP_NAME="mosquitto"
+REDIS_APP_NAME="redis"
 
 # Dapr component configuration
 DAPR_PUBSUB_COMPONENT_NAME="pubsub"
-DAPR_COMPONENT_YAML_FILE="dapr-mqtt-pubsub.yaml"
+DAPR_COMPONENT_YAML_FILE="dapr-redis-pubsub.yaml"
 
 
 # --- 0. Build Local Docker Images ---
@@ -95,34 +95,30 @@ az containerapp env create \
 echo "Container Apps environment created successfully."
 
 
-# --- 3. Deploy Mosquitto MQTT Broker ---
-# This section deploys the Mosquitto MQTT broker as a container app.
-echo "Deploying Mosquitto MQTT broker..."
+# --- 3. Deploy Redis Container ---
+# This section deploys the Redis container as a container app.
+echo "Deploying Redis container..."
 az containerapp create \
-  --name "$MOSQUITTO_APP_NAME" \
+  --name "$REDIS_APP_NAME" \
   --resource-group "$RESOURCE_GROUP" \
   --environment "$CONTAINERAPPS_ENVIRONMENT" \
-  --image "eclipse-mosquitto" \
-  --target-port 1883 \
+  --image "redis:latest" \
+  --target-port 6379 \
   --ingress 'internal'
 
 
-# --- 4. Configure Dapr MQTT Pub/Sub Component ---
+# --- 4. Configure Dapr Redis Pub/Sub Component ---
 # This section configures a Dapr pub/sub component for the Container Apps environment.
 
-echo "Creating Dapr MQTT pub/sub component YAML file..."
+echo "Creating Dapr Redis pub/sub component YAML file..."
 cat <<EOF > "$DAPR_COMPONENT_YAML_FILE"
-componentType: pubsub.mqtt
+componentType: pubsub.redis
 version: v1
 metadata:
-- name: url
-  value: "tcp://$MOSQUITTO_APP_NAME:1883"
-- name: qos
-  value: 1
-- name: retain
-  value: "false"
-- name: cleanSession
-  value: "false"
+- name: redisHost
+  value: "$REDIS_APP_NAME:6379"
+- name: redisPassword
+  value: ""
 scopes:
 - $ORDER_SERVICE_APP_NAME
 - $SHIPPING_SERVICE_APP_NAME
