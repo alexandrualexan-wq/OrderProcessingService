@@ -45,7 +45,9 @@ public class OrderGenerator : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        _logger.LogInformation("OrderGenerator is waiting for the Dapr sidecar to be ready...");
         await _daprClient.WaitForSidecarAsync(stoppingToken);
+        _logger.LogInformation("Dapr sidecar is ready. OrderGenerator will start publishing messages.");
 
         while (!stoppingToken.IsCancellationRequested)
         {
