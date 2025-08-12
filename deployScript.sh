@@ -25,12 +25,11 @@ ORDER_SERVICE_APP_NAME="order-service"
 SHIPPING_SERVICE_APP_NAME="shipping-service"
 NOTIFICATION_SERVICE_APP_NAME="notification-service"
 DAPR_DASHBOARD_APP_NAME="dapr-dashboard"
-ZOOKEEPER_APP_NAME="zookeeper"
-KAFKA_APP_NAME="kafka"
+MOSQUITTO_APP_NAME="mosquitto"
 
 # Dapr component configuration
 DAPR_PUBSUB_COMPONENT_NAME="pubsub"
-DAPR_COMPONENT_YAML_FILE="dapr-kafka-pubsub.yaml"
+DAPR_COMPONENT_YAML_FILE="dapr-mqtt-pubsub.yaml"
 
 
 # --- 0. Build Local Docker Images ---
@@ -96,51 +95,34 @@ az containerapp env create \
 echo "Container Apps environment created successfully."
 
 
-# --- 3. Deploy Kafka and Zookeeper ---
-# This section deploys Zookeeper and Kafka as container apps.
-
-echo "Deploying Zookeeper..."
+# --- 3. Deploy Mosquitto MQTT Broker ---
+# This section deploys the Mosquitto MQTT broker as a container app.
+echo "Deploying Mosquitto MQTT broker..."
 az containerapp create \
-  --name "$ZOOKEEPER_APP_NAME" \
+  --name "$MOSQUITTO_APP_NAME" \
   --resource-group "$RESOURCE_GROUP" \
   --environment "$CONTAINERAPPS_ENVIRONMENT" \
-  --image "confluentinc/cp-zookeeper:7.3.0" \
-  --target-port 2181 \
-  --ingress 'internal' \
-  --env-vars "ZOOKEEPER_CLIENT_PORT=2181" "ZOOKEEPER_TICK_TIME=2000"
-
-echo "Waiting for Zookeeper to be ready..."
-while [[ $(az containerapp show --name "$ZOOKEEPER_APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.provisioningState -o tsv) != "Succeeded" || $(az containerapp show --name "$ZOOKEEPER_APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.runningStatus -o tsv) != "Running" ]]; do
-  echo "Zookeeper is not ready yet, waiting..."
-  sleep 5
-done
-echo "Zookeeper is ready."
+  --image "eclipse-mosquitto" \
+  --target-port 1883 \
+  --ingress 'internal'
 
 
-echo "Deploying Kafka..."
-KAFKA_BROKERS="$KAFKA_APP_NAME:9092"
-az containerapp create \
-  --name "$KAFKA_APP_NAME" \
-  --resource-group "$RESOURCE_GROUP" \
-  --environment "$CONTAINERAPPS_ENVIRONMENT" \
-  --image "confluentinc/cp-kafka:7.3.0" \
-  --target-port 9092 \
-  --ingress 'internal' \
-  --env-vars "KAFKA_BROKER_ID=1" "KAFKA_ZOOKEEPER_CONNECT=$ZOOKEEPER_APP_NAME:2181" "KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://$KAFKA_APP_NAME:9092" "KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1"
-
-
-# --- 4. Configure Dapr Kafka Pub/Sub Component ---
+# --- 4. Configure Dapr MQTT Pub/Sub Component ---
 # This section configures a Dapr pub/sub component for the Container Apps environment.
 
-echo "Creating Dapr Kafka pub/sub component YAML file..."
+echo "Creating Dapr MQTT pub/sub component YAML file..."
 cat <<EOF > "$DAPR_COMPONENT_YAML_FILE"
-componentType: pubsub.kafka
+componentType: pubsub.mqtt
 version: v1
 metadata:
-- name: brokers
-  value: "$KAFKA_BROKERS"
-- name: authType
-  value: "none"
+- name: url
+  value: "tcp://$MOSQUITTO_APP_NAME:1883"
+- name: qos
+  value: 1
+- name: retain
+  value: "false"
+- name: cleanSession
+  value: "false"
 scopes:
 - $ORDER_SERVICE_APP_NAME
 - $SHIPPING_SERVICE_APP_NAME
