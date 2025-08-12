@@ -109,8 +109,12 @@ az containerapp create \
   --ingress 'internal' \
   --env-vars "ZOOKEEPER_CLIENT_PORT=2181" "ZOOKEEPER_TICK_TIME=2000"
 
-echo "Waiting for Zookeeper to start..."
-sleep 30
+echo "Waiting for Zookeeper to be ready..."
+while [[ $(az containerapp show --name "$ZOOKEEPER_APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.provisioningState -o tsv) != "Succeeded" || $(az containerapp show --name "$ZOOKEEPER_APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.runningStatus -o tsv) != "Running" ]]; do
+  echo "Zookeeper is not ready yet, waiting..."
+  sleep 5
+done
+echo "Zookeeper is ready."
 
 
 echo "Deploying Kafka..."
