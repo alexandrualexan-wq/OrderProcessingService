@@ -104,7 +104,15 @@ az containerapp create \
   --environment "$CONTAINERAPPS_ENVIRONMENT" \
   --image "redis:latest" \
   --target-port 6379 \
-  --ingress 'internal'
+  --ingress 'internal' \
+  --tcp-startup-probe-port 6379
+
+echo "Waiting for Redis to be ready..."
+while [[ $(az containerapp show --name "$REDIS_APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.provisioningState -o tsv) != "Succeeded" || $(az containerapp show --name "$REDIS_APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.runningStatus -o tsv) != "Running" ]]; do
+  echo "Redis is not ready yet, waiting..."
+  sleep 5
+done
+echo "Redis is ready."
 
 
 # --- 4. Configure Dapr Redis Pub/Sub Component ---

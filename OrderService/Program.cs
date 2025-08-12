@@ -9,6 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<AppDbContext>(opt => opt.UseInMemoryDatabase("OrderDb"));
 builder.Services.AddDaprClient();
 builder.Services.AddHostedService<OrderGenerator>();
+builder.Services.AddHostedService<DaprSidecarHealthCheck>();
 
 builder.Services.AddControllers();
 
@@ -45,7 +46,8 @@ public class OrderGenerator : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        await _daprClient.WaitForSidecarAsync(stoppingToken);
+        // The DaprSidecarHealthCheck will wait for the sidecar to be ready.
+        // This service can start publishing messages immediately.
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -65,6 +67,7 @@ public class OrderGenerator : BackgroundService
             };
 
             // Publish the event
+            _logger.LogInformation("Publishing order: {OrderId}", order.OrderId);
             await _daprClient.PublishEventAsync("pubsub", "orders", order, stoppingToken);
             _logger.LogInformation("Published Order: {OrderId}", order.OrderId);
 
@@ -76,5 +79,24 @@ public class OrderGenerator : BackgroundService
                 await dbContext.SaveChangesAsync(stoppingToken);
             }
         }
+    }
+}
+
+public class DaprSidecarHealthCheck : BackgroundService
+{
+    private readonly DaprClient _daprClient;
+    private readonly ILogger<DaprSidecarHealthCheck> _logger;
+
+    public DaprSidecarHealthCheck(DaprClient daprClient, ILogger<DaprSidecarHealthCheck> logger)
+    {
+        _daprClient = daprClient;
+        _logger = logger;
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        _logger.LogInformation("Waiting for Dapr sidecar to be ready...");
+        await _daprClient.WaitForSidecarAsync(stoppingToken);
+        _logger.LogInformation("Dapr sidecar is ready.");
     }
 }
