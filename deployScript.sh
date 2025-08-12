@@ -20,17 +20,17 @@ ACR_NAME="alxintro1"
 # Azure Container Apps environment name
 CONTAINERAPPS_ENVIRONMENT="alx-container-apps-environment"
 
-# Azure Cache for Redis name
-REDIS_NAME="alxintro1redis"
-
 # Application names
 ORDER_SERVICE_APP_NAME="order-service"
 SHIPPING_SERVICE_APP_NAME="shipping-service"
 NOTIFICATION_SERVICE_APP_NAME="notification-service"
+DAPR_DASHBOARD_APP_NAME="dapr-dashboard"
+ZOOKEEPER_APP_NAME="zookeeper"
+KAFKA_APP_NAME="kafka"
 
 # Dapr component configuration
 DAPR_PUBSUB_COMPONENT_NAME="pubsub"
-DAPR_COMPONENT_YAML_FILE="dapr-redis-pubsub.yaml"
+DAPR_COMPONENT_YAML_FILE="dapr-kafka-pubsub.yaml"
 
 
 # --- 0. Build Local Docker Images ---
@@ -74,25 +74,6 @@ docker push "$ACR_NAME.azurecr.io/notification-service:v1"
 echo "Docker images pushed successfully to ACR."
 
 
-# --- 1.5. Create Azure Cache for Redis ---
-echo "Creating Azure Cache for Redis: $REDIS_NAME"
-az redis create \
-  --name "$REDIS_NAME" \
-  --resource-group "$RESOURCE_GROUP" \
-  --location "$LOCATION" \
-  --sku Basic \
-  --vm-size c0
-
-echo "Getting Azure Cache for Redis primary key..."
-REDIS_PRIMARY_KEY=$(az redis list-keys \
-  --name "$REDIS_NAME" \
-  --resource-group "$RESOURCE_GROUP" \
-  --query primaryKey \
-  --output tsv)
-
-REDIS_HOST="$REDIS_NAME.redis.cache.windows.net:6380"
-
-
 # --- 2. Create Container App Environment ---
 # This section creates the Azure Container Apps environment where the services will be deployed.
 
@@ -115,18 +96,43 @@ az containerapp env create \
 echo "Container Apps environment created successfully."
 
 
-# --- 3. Configure Dapr Redis Pub/Sub Component ---
+# --- 3. Deploy Kafka and Zookeeper ---
+# This section deploys Zookeeper and Kafka as container apps.
+
+echo "Deploying Zookeeper..."
+az containerapp create \
+  --name "$ZOOKEEPER_APP_NAME" \
+  --resource-group "$RESOURCE_GROUP" \
+  --environment "$CONTAINERAPPS_ENVIRONMENT" \
+  --image "confluentinc/cp-zookeeper:7.3.0" \
+  --target-port 2181 \
+  --ingress 'internal' \
+  --env-vars "ZOOKEEPER_CLIENT_PORT=2181" "ZOOKEEPER_TICK_TIME=2000"
+
+echo "Deploying Kafka..."
+KAFKA_BROKERS="$KAFKA_APP_NAME:9092"
+az containerapp create \
+  --name "$KAFKA_APP_NAME" \
+  --resource-group "$RESOURCE_GROUP" \
+  --environment "$CONTAINERAPPS_ENVIRONMENT" \
+  --image "confluentinc/cp-kafka:7.3.0" \
+  --target-port 9092 \
+  --ingress 'internal' \
+  --env-vars "KAFKA_BROKER_ID=1" "KAFKA_ZOOKEEPER_CONNECT=$ZOOKEEPER_APP_NAME:2181" "KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://$KAFKA_APP_NAME:9092" "KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1"
+
+
+# --- 4. Configure Dapr Kafka Pub/Sub Component ---
 # This section configures a Dapr pub/sub component for the Container Apps environment.
 
-echo "Creating Dapr Redis pub/sub component YAML file..."
+echo "Creating Dapr Kafka pub/sub component YAML file..."
 cat <<EOF > "$DAPR_COMPONENT_YAML_FILE"
-componentType: pubsub.redis
+componentType: pubsub.kafka
 version: v1
 metadata:
-- name: redisHost
-  value: "$REDIS_HOST"
-- name: redisPassword
-  value: "$REDIS_PRIMARY_KEY"
+- name: brokers
+  value: "$KAFKA_BROKERS"
+- name: authType
+  value: "none"
 scopes:
 - $ORDER_SERVICE_APP_NAME
 - $SHIPPING_SERVICE_APP_NAME
@@ -142,7 +148,7 @@ az containerapp env dapr-component set \
 echo "Dapr component configured successfully."
 
 
-# --- 4. Deploy Services to Azure Container Apps ---
+# --- 5. Deploy Services to Azure Container Apps ---
 # This section deploys the services as container apps to the created environment.
 
 echo "Deploying Order Service..."
@@ -186,5 +192,14 @@ az containerapp create \
   --enable-dapr \
   --dapr-app-id "$NOTIFICATION_SERVICE_APP_NAME" \
   --dapr-app-port 8080
+
+echo "Deploying Dapr Dashboard..."
+az containerapp create \
+  --name "$DAPR_DASHBOARD_APP_NAME" \
+  --resource-group "$RESOURCE_GROUP" \
+  --environment "$CONTAINERAPPS_ENVIRONMENT" \
+  --image "daprio/dashboard" \
+  --target-port 8080 \
+  --ingress 'external'
 
 echo "Deployment complete!"
