@@ -117,8 +117,6 @@ version: v1
 metadata:
 - name: redisHost
   value: "$REDIS_APP_NAME:6379"
-- name: redisPassword
-  value: ""
 scopes:
 - $ORDER_SERVICE_APP_NAME
 - $SHIPPING_SERVICE_APP_NAME
