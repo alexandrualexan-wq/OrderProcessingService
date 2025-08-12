@@ -20,9 +20,6 @@ ACR_NAME="alxintro1"
 # Azure Container Apps environment name
 CONTAINERAPPS_ENVIRONMENT="alx-container-apps-environment"
 
-# Azure Cache for Redis name
-REDIS_NAME="alxintro1redis"
-
 # Application names
 ORDER_SERVICE_APP_NAME="order-service"
 SHIPPING_SERVICE_APP_NAME="shipping-service"
@@ -30,7 +27,7 @@ NOTIFICATION_SERVICE_APP_NAME="notification-service"
 
 # Dapr component configuration
 DAPR_PUBSUB_COMPONENT_NAME="pubsub"
-DAPR_COMPONENT_YAML_FILE="dapr-redis-pubsub.yaml"
+DAPR_COMPONENT_YAML_FILE="dapr-inmemory-pubsub.yaml"
 
 
 # --- 0. Build Local Docker Images ---
@@ -74,25 +71,6 @@ docker push "$ACR_NAME.azurecr.io/notification-service:v1"
 echo "Docker images pushed successfully to ACR."
 
 
-# --- 1.5. Create Azure Cache for Redis ---
-echo "Creating Azure Cache for Redis: $REDIS_NAME"
-az redis create \
-  --name "$REDIS_NAME" \
-  --resource-group "$RESOURCE_GROUP" \
-  --location "$LOCATION" \
-  --sku Basic \
-  --vm-size c0
-
-echo "Getting Azure Cache for Redis primary key..."
-REDIS_PRIMARY_KEY=$(az redis list-keys \
-  --name "$REDIS_NAME" \
-  --resource-group "$RESOURCE_GROUP" \
-  --query primaryKey \
-  --output tsv)
-
-REDIS_HOST="$REDIS_NAME.redis.cache.windows.net:6380"
-
-
 # --- 2. Create Container App Environment ---
 # This section creates the Azure Container Apps environment where the services will be deployed.
 
@@ -115,18 +93,16 @@ az containerapp env create \
 echo "Container Apps environment created successfully."
 
 
-# --- 3. Configure Dapr Redis Pub/Sub Component ---
+# --- 3. Configure Dapr In-Memory Pub/Sub Component ---
 # This section configures a Dapr pub/sub component for the Container Apps environment.
+# For this example, we are using an in-memory pub/sub component, which is suitable for testing and development.
+# For production, you would use a more robust component like Azure Service Bus or Redis.
 
-echo "Creating Dapr Redis pub/sub component YAML file..."
+echo "Creating Dapr in-memory pub/sub component YAML file..."
 cat <<EOF > "$DAPR_COMPONENT_YAML_FILE"
-componentType: pubsub.redis
+componentType: pubsub.in-memory
 version: v1
-metadata:
-- name: redisHost
-  value: "$REDIS_HOST"
-- name: redisPassword
-  value: "$REDIS_PRIMARY_KEY"
+metadata: []
 scopes:
 - $ORDER_SERVICE_APP_NAME
 - $SHIPPING_SERVICE_APP_NAME
@@ -154,7 +130,6 @@ az containerapp create \
   --target-port 8080 \
   --ingress 'external' \
   --registry-server "$ACR_NAME.azurecr.io" \
-  --env-vars "ASPNETCORE_URLS=http://+:8080" \
   --enable-dapr \
   --dapr-app-id "$ORDER_SERVICE_APP_NAME" \
   --dapr-app-port 8080
@@ -168,7 +143,6 @@ az containerapp create \
   --target-port 8080 \
   --ingress 'internal' \
   --registry-server "$ACR_NAME.azurecr.io" \
-  --env-vars "ASPNETCORE_URLS=http://+:8080" \
   --enable-dapr \
   --dapr-app-id "$SHIPPING_SERVICE_APP_NAME" \
   --dapr-app-port 8080
@@ -182,7 +156,6 @@ az containerapp create \
   --target-port 8080 \
   --ingress 'internal' \
   --registry-server "$ACR_NAME.azurecr.io" \
-  --env-vars "ASPNETCORE_URLS=http://+:8080" \
   --enable-dapr \
   --dapr-app-id "$NOTIFICATION_SERVICE_APP_NAME" \
   --dapr-app-port 8080
