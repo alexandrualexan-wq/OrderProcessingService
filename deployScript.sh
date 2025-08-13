@@ -104,7 +104,7 @@ az containerapp create \
   --environment "$CONTAINERAPPS_ENVIRONMENT" \
   --image "redis:latest" \
   --target-port 6379 \
-  --ingress 'internal'
+  --ingress 'internal' \
   --min-replicas 1 \
   --max-replicas 1 \
   --cpu 0.25 \
@@ -158,7 +158,7 @@ az containerapp create \
   --max-replicas 1 \
   --cpu 0.25 \
   --memory 0.5Gi \
-  
+
 echo "Deploying Shipping Service..."
 az containerapp create \
   --name "$SHIPPING_SERVICE_APP_NAME" \
