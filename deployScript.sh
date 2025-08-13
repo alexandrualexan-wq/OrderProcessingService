@@ -109,6 +109,9 @@ az containerapp create \
 echo "Waiting for Redis to start..."
 sleep 60
 
+echo "Showing Redis container logs..."
+az containerapp logs show --name "$REDIS_APP_NAME" --resource-group "$RESOURCE_GROUP"
+
 
 
 # --- 4. Configure Dapr Redis Pub/Sub Component ---
