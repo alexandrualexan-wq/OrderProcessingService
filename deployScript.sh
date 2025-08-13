@@ -150,9 +150,6 @@ az containerapp create \
   --env-vars "ASPNETCORE_URLS=http://+:8080" \
   --enable-dapr \
   --dapr-app-id "$ORDER_SERVICE_APP_NAME" \
-  --dapr-app-port 8080 \
-  --dapr-http-port 3500 \
-  --dapr-grpc-port 50001
 
 echo "Deploying Shipping Service..."
 az containerapp create \
@@ -166,9 +163,6 @@ az containerapp create \
   --env-vars "ASPNETCORE_URLS=http://+:8080" \
   --enable-dapr \
   --dapr-app-id "$SHIPPING_SERVICE_APP_NAME" \
-  --dapr-app-port 8080 \
-  --dapr-http-port 3501 \
-  --dapr-grpc-port 50002
 
 echo "Deploying Notification Service..."
 az containerapp create \
@@ -182,9 +176,6 @@ az containerapp create \
   --env-vars "ASPNETCORE_URLS=http://+:8080" \
   --enable-dapr \
   --dapr-app-id "$NOTIFICATION_SERVICE_APP_NAME" \
-  --dapr-app-port 8080 \
-  --dapr-http-port 3502 \
-  --dapr-grpc-port 50003
 
 echo "Deploying Dapr Dashboard..."
 az containerapp create \
