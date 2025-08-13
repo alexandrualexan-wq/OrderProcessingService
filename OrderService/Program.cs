@@ -66,17 +66,37 @@ public class OrderGenerator : BackgroundService
                 TotalAmount = 1225.50m
             };
 
-            // Publish the event
-            _logger.LogInformation("Publishing order: {OrderId}", order.OrderId);
-            await _daprClient.PublishEventAsync("pubsub", "orders", order, stoppingToken);
-            _logger.LogInformation("Published Order: {OrderId}", order.OrderId);
-
-            // Save to in-memory database
-            using (var scope = _serviceProvider.CreateScope())
+            // Publish the event with retry logic
+            const int maxRetries = 3;
+            for (int i = 0; i < maxRetries; i++)
             {
-                var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                dbContext.Orders.Add(order);
-                await dbContext.SaveChangesAsync(stoppingToken);
+                try
+                {
+                    _logger.LogInformation("Publishing order: {OrderId}", order.OrderId);
+                    await _daprClient.PublishEventAsync("pubsub", "orders", order, stoppingToken);
+                    _logger.LogInformation("Published Order: {OrderId}", order.OrderId);
+
+                    // Save to in-memory database
+                    using (var scope = _serviceProvider.CreateScope())
+                    {
+                        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                        dbContext.Orders.Add(order);
+                        await dbContext.SaveChangesAsync(stoppingToken);
+                    }
+                    break; // Success, exit the retry loop
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error publishing order: {OrderId}. Retry {RetryCount}/{MaxRetries}", order.OrderId, i + 1, maxRetries);
+                    if (i < maxRetries - 1)
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken); // Wait before retrying
+                    }
+                    else
+                    {
+                        _logger.LogError("Failed to publish order: {OrderId} after {MaxRetries} retries.", order.OrderId, maxRetries);
+                    }
+                }
             }
         }
     }
