@@ -105,6 +105,10 @@ az containerapp create \
   --image "redis:latest" \
   --target-port 6379 \
   --ingress 'internal'
+  --min-replicas 1 \
+  --max-replicas 1 \
+  --cpu 0.25 \
+  --memory 0.5Gi \
 
 echo "Waiting for Redis to start..."
 sleep 60
@@ -150,7 +154,11 @@ az containerapp create \
   --env-vars "ASPNETCORE_URLS=http://+:8080" \
   --enable-dapr \
   --dapr-app-id "$ORDER_SERVICE_APP_NAME" \
-
+  --min-replicas 1 \
+  --max-replicas 1 \
+  --cpu 0.25 \
+  --memory 0.5Gi \
+  
 echo "Deploying Shipping Service..."
 az containerapp create \
   --name "$SHIPPING_SERVICE_APP_NAME" \
@@ -163,6 +171,10 @@ az containerapp create \
   --env-vars "ASPNETCORE_URLS=http://+:8080" \
   --enable-dapr \
   --dapr-app-id "$SHIPPING_SERVICE_APP_NAME" \
+  --min-replicas 1 \
+  --max-replicas 1 \
+  --cpu 0.25 \
+  --memory 0.5Gi \
 
 echo "Deploying Notification Service..."
 az containerapp create \
@@ -176,14 +188,18 @@ az containerapp create \
   --env-vars "ASPNETCORE_URLS=http://+:8080" \
   --enable-dapr \
   --dapr-app-id "$NOTIFICATION_SERVICE_APP_NAME" \
+  --min-replicas 1 \
+  --max-replicas 1 \
+  --cpu 0.25 \
+  --memory 0.5Gi \
 
-echo "Deploying Dapr Dashboard..."
-az containerapp create \
-  --name "$DAPR_DASHBOARD_APP_NAME" \
-  --resource-group "$RESOURCE_GROUP" \
-  --environment "$CONTAINERAPPS_ENVIRONMENT" \
-  --image "daprio/dashboard" \
-  --target-port 8080 \
-  --ingress 'external'
+# echo "Deploying Dapr Dashboard..."
+# az containerapp create \
+#   --name "$DAPR_DASHBOARD_APP_NAME" \
+#   --resource-group "$RESOURCE_GROUP" \
+#   --environment "$CONTAINERAPPS_ENVIRONMENT" \
+#   --image "daprio/dashboard" \
+#   --target-port 8080 \
+#   --ingress 'external'
 
 echo "Deployment complete!"
