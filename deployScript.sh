@@ -137,6 +137,7 @@ az containerapp create \
   --max-replicas 1 \
   --cpu 0.25 \
   --memory 0.5Gi \
+  --transport tcp \
 
 
 echo "Waiting for Redis to start..."
