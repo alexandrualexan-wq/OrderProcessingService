@@ -147,10 +147,117 @@ While the application is running, you can access the following endpoints in your
 └── README.md               # This file
 ```
 
-## Next Steps: Deployment to Azure
+## Docker Compose Details
 
-This project serves as the foundation for the "INTROSPECT 1 B" hands-on lab. The next steps involve deploying this containerized application to the cloud:
+The `docker-compose.yml` file is configured to run the entire system locally. It defines the following services, all connected to a common `dapr-network`:
 
-1.  **Build and Push Images**: Build the Docker images for each service and push them to a container registry like Azure Container Registry (ACR).
-2.  **Deploy to Azure Container Apps (ACA)**: Create an ACA environment and deploy the three services using the images from your ACR.
-3.  **Configure Dapr**: Enable Dapr in your ACA environment and configure a Dapr component for a cloud-native message broker like **Azure Service Bus** instead of Redis.
+### Application Services
+
+*   **`orderservice`**:
+    *   **Image**: Built from `./OrderService/Dockerfile`.
+    *   **Role**: The main application that publishes order events. It exposes an endpoint at `http://localhost:5001` to view created orders.
+    *   **Dependencies**: Depends on `redis` to be healthy before starting.
+
+*   **`shippingservice`**:
+    *   **Image**: Built from `./ShippingService/Dockerfile`.
+    *   **Role**: A subscriber that listens for order events and creates shipments. It exposes an endpoint at `http://localhost:5002` to view created shipments.
+    *   **Dependencies**: Depends on `redis` to be healthy before starting.
+
+*   **`notificationservice`**:
+    *   **Image**: Built from `./NotificationService/Dockerfile`.
+    *   **Role**: A subscriber that listens for order events and creates notifications. It exposes an endpoint at `http://localhost:5103` to view created notifications.
+    *   **Dependencies**: Depends on `redis` to be healthy before starting.
+
+### Dapr Components
+
+*   **`orderservice-dapr`**, **`shippingservice-dapr`**, **`notificationservice-dapr`**:
+    *   **Image**: `daprio/daprd:latest`.
+    *   **Role**: These are the Dapr sidecars for each application service. They enable Dapr functionality, such as pub/sub, for their corresponding service. They are configured to use the `placement` service and load components from the `./components` directory.
+
+*   **`placement`**:
+    *   **Image**: `daprio/dapr`.
+    *   **Role**: The Dapr placement service, which is required for actor placement and to ensure Dapr works correctly in a self-hosted environment.
+
+*   **`dapr-dashboard`**:
+    *   **Image**: `daprio/dashboard`.
+    *   **Role**: A web-based UI for monitoring Dapr applications, accessible at `http://localhost:8080`.
+
+### Infrastructure
+
+*   **`redis`**:
+    *   **Image**: `redis:alpine`.
+    *   **Role**: The message broker used by the Dapr pub/sub component for local development. It exposes the Redis port `6379`.
+
+### Dockerfiles
+
+Each service (`OrderService`, `ShippingService`, `NotificationService`) has its own `Dockerfile` that follows a multi-stage build pattern to create an optimized and secure container image:
+
+*   **`base` Stage**: Starts from the official .NET 8 ASP.NET runtime image. It sets up the working directory and exposes the necessary port.
+*   **`build` Stage**: Uses the .NET 8 SDK image to build the application. It restores the NuGet packages, copies the source code, and builds the project in `Release` mode.
+*   **`publish` Stage**: Publishes the application to create a self-contained set of files for deployment.
+*   **`final` Stage**: Copies the published application from the `publish` stage into the `base` image. This results in a smaller final image that only contains the application and its runtime dependencies, without the SDK and build tools. The `ENTRYPOINT` is set to run the application's DLL.
+
+This approach ensures that the final container image is as small as possible and has a reduced attack surface, as it does not contain the .NET SDK or the application's source code.
+
+## Azure Deployment
+
+This project can be deployed to Azure using the provided `deployScript.sh` script. This script automates the provisioning of Azure resources and the deployment of the application.
+
+### Azure Resources Provisioned
+
+The script creates the following resources in Azure:
+
+*   **Azure Resource Group**:
+    *   **Purpose**: Acts as a logical container for all the Azure resources created for this project.
+
+*   **Azure Container Registry (ACR)**:
+    *   **Purpose**: A private Docker container registry used to store and manage the container images for the `OrderService`, `ShippingService`, and `NotificationService`.
+
+*   **Azure Log Analytics Workspace**:
+    *   **Purpose**: Used to collect and analyze logs and metrics from the Azure Container Apps environment, providing insights into the health and performance of the applications.
+
+*   **Azure Container Apps Environment**:
+    *   **Purpose**: A fully managed, serverless container service that provides the execution environment for the containerized applications. It is connected to the Log Analytics Workspace for monitoring.
+
+*   **Azure Container Apps**:
+    *   **`order-service`**: The main application, configured with Dapr enabled and an external ingress to allow placing orders.
+    *   **`shipping-service`**: A subscriber service, configured with Dapr enabled and an internal ingress, as it only needs to be accessible from within the environment.
+    *   **`notification-service`**: A subscriber service, also configured with Dapr enabled and an internal ingress.
+    *   **`redis`**: The Redis message broker, deployed as a container app with internal ingress.
+    *   **`dapr-dashboard`**: The Dapr dashboard, deployed with an external ingress for monitoring.
+
+*   **Dapr Pub/Sub Component**:
+    *   **Purpose**: A Dapr component is configured at the environment level to use the deployed Redis container app as the pub/sub message broker. This component is scoped to the application services.
+
+### Deployment Script Details (`deployScript.sh`)
+
+The `deployScript.sh` script is a comprehensive bash script that automates the entire deployment process to Azure. It is designed to be idempotent, meaning it can be run multiple times without causing errors.
+
+**Key features of the script:**
+
+*   **Variable-driven**: The script uses variables for resource names, locations, and other settings, making it easy to customize. It also generates a random suffix for resource names to ensure uniqueness.
+*   **Error Handling**: The script uses `set -e` to exit immediately if any command fails, preventing partial deployments.
+*   **Step-by-step Execution**: The script is divided into logical sections, each responsible for a specific part of the deployment process, with clear logging for each step.
+*   **Dapr Configuration**: The script dynamically creates a YAML file for the Dapr pub/sub component, injecting the name of the deployed Redis container.
+*   **Azure CLI Commands**: The script uses the Azure CLI (`az`) to interact with Azure, creating and configuring all the necessary resources.
+
+**The script performs the following main actions:**
+
+1.  **Build and Push Docker Images**: Builds the container images and pushes them to the newly created ACR.
+2.  **Create Container App Environment**: Provisions the Container Apps environment and its dependencies (Log Analytics).
+3.  **Deploy Redis**: Deploys the Redis container app.
+4.  **Configure Dapr**: Creates and configures the Dapr pub/sub component.
+5.  **Deploy Services**: Deploys the application services and the Dapr dashboard to the environment.
+
+### How to Run the Deployment
+
+1.  **Log in to Azure**:
+    ```sh
+    az login
+    ```
+2.  **Run the script**:
+    ```sh
+    ./deployScript.sh
+    ```
+
+The script will output the names of the created resources and the URLs for the externally accessible services.
