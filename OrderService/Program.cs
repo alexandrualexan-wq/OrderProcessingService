@@ -2,12 +2,7 @@ using Dapr.Client;
 using Microsoft.EntityFrameworkCore;
 using OrderService;
 
-
-// 1. CONFIGURE AND RUN THE WEB APPLICATION
 var builder = WebApplication.CreateBuilder(args);
-
-
-// Add services to the container.
 builder.Services.AddDbContext<AppDbContext>(opt => opt.UseInMemoryDatabase("OrderDb"));
 builder.Services.AddDaprClient();
 builder.Services.AddHostedService<OrderGenerator>();

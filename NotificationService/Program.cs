@@ -2,26 +2,16 @@ using Dapr.Client;
 using Microsoft.EntityFrameworkCore;
 using NotificationService;
 
-// 1. CONFIGURE AND RUN THE WEB APPLICATION
 var builder = WebApplication.CreateBuilder(args);
-
-// Add services to the container.
 builder.Services.AddDbContext<AppDbContext>(opt => opt.UseInMemoryDatabase("NotificationDb"));
 builder.Services.AddDaprClient();
 builder.Services.AddHostedService<DaprSidecarHealthCheck>();
-
-// Add Dapr integration for controllers
 builder.Services.AddControllers().AddDapr();
-
 var app = builder.Build();
-
-// Configure the HTTP request pipeline.
 app.UseCloudEvents();
 app.MapSubscribeHandler();
 app.MapControllers();
-
 app.MapGet("/healthz", () => "OK");
-
 app.Run();
 
 // 2. DEFINE MODELS AND DBCONTEXT (Must come after top-level statements)
