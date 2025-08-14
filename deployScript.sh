@@ -9,30 +9,32 @@ set -e
 # These variables are used throughout the script.
 # It is recommended to modify them to match your environment.
 
+# Suffix for all generated variables
+INDEX=$(($RANDOM % 1000))
 
 # Azure Resource Group and Location
-RESOURCE_GROUP="alx-intro1-rg"
+RESOURCE_GROUP="alx-intro1-rg-$INDEX"
 LOCATION="eastus2"
 
 
 # Azure Log Analytics Workspace for Container Apps environment
-LOG_ANALYTICS_WORKSPACE="alx-analytics-workspace"
+LOG_ANALYTICS_WORKSPACE="alx-analytics-workspace-$INDEX"
 
 
 # Azure Container Registry (ACR) name
-ACR_NAME="alxintro1"
+ACR_NAME="alxintro1$INDEX"
 
 
 # Azure Container Apps environment name
-CONTAINERAPPS_ENVIRONMENT="alx-container-apps-environment"
+CONTAINERAPPS_ENVIRONMENT="alx-container-apps-environment-$INDEX"
 
 
 # Application names
-ORDER_SERVICE_APP_NAME="order-service"
-SHIPPING_SERVICE_APP_NAME="shipping-service"
-NOTIFICATION_SERVICE_APP_NAME="notification-service"
-DAPR_DASHBOARD_APP_NAME="dapr-dashboard"
-REDIS_APP_NAME="redis"
+ORDER_SERVICE_APP_NAME="order-service-$INDEX"
+SHIPPING_SERVICE_APP_NAME="shipping-service-$INDEX"
+NOTIFICATION_SERVICE_APP_NAME="notification-service-$INDEX"
+DAPR_DASHBOARD_APP_NAME="dapr-dashboard-$INDEX"
+REDIS_APP_NAME="redis-$INDEX"
 
 
 # Dapr component configuration
@@ -252,4 +254,3 @@ az containerapp create \
 
 
 echo "Deployment complete!"
-
