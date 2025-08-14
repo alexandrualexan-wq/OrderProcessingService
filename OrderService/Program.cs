@@ -2,28 +2,25 @@ using Dapr.Client;
 using Microsoft.EntityFrameworkCore;
 using OrderService;
 
+
 // 1. CONFIGURE AND RUN THE WEB APPLICATION
 var builder = WebApplication.CreateBuilder(args);
+
 
 // Add services to the container.
 builder.Services.AddDbContext<AppDbContext>(opt => opt.UseInMemoryDatabase("OrderDb"));
 builder.Services.AddDaprClient();
 builder.Services.AddHostedService<OrderGenerator>();
 builder.Services.AddHostedService<DaprSidecarHealthCheck>();
-
-builder.Services.AddControllers();
-
+builder.Services.AddControllers().AddDapr();
 var app = builder.Build();
-
-// Configure the HTTP request pipeline.
+app.UseCloudEvents();
 app.MapControllers();
-
 app.MapGet("/healthz", () => "OK");
-
 app.Run();
 
-// 2. DEFINE SERVICES AND CLASSES (Must come after top-level statements)
 
+// 2. DEFINE SERVICES AND CLASSES (Must come after top-level statements)
 public class AppDbContext : DbContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
@@ -31,11 +28,13 @@ public class AppDbContext : DbContext
     public DbSet<OrderItem> OrderItems { get; set; } = null!;
 }
 
+
 public class OrderGenerator : BackgroundService
 {
     private readonly ILogger<OrderGenerator> _logger;
     private readonly DaprClient _daprClient;
     private readonly IServiceProvider _serviceProvider;
+
 
     public OrderGenerator(ILogger<OrderGenerator> logger, DaprClient daprClient, IServiceProvider serviceProvider)
     {
@@ -48,11 +47,9 @@ public class OrderGenerator : BackgroundService
     {
         // The DaprSidecarHealthCheck will wait for the sidecar to be ready.
         // This service can start publishing messages immediately.
-
         while (!stoppingToken.IsCancellationRequested)
         {
             await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
-
             var order = new Order
             {
                 OrderId = Guid.NewGuid(),
@@ -66,6 +63,7 @@ public class OrderGenerator : BackgroundService
                 TotalAmount = 1225.50m
             };
 
+
             // Publish the event with retry logic
             const int maxRetries = 3;
             for (int i = 0; i < maxRetries; i++)
@@ -75,6 +73,7 @@ public class OrderGenerator : BackgroundService
                     _logger.LogInformation("Publishing order: {OrderId}", order.OrderId);
                     await _daprClient.PublishEventAsync("pubsub", "orders", order, stoppingToken);
                     _logger.LogInformation("Published Order: {OrderId}", order.OrderId);
+
 
                     // Save to in-memory database
                     using (var scope = _serviceProvider.CreateScope())
@@ -102,16 +101,19 @@ public class OrderGenerator : BackgroundService
     }
 }
 
+
 public class DaprSidecarHealthCheck : BackgroundService
 {
     private readonly DaprClient _daprClient;
     private readonly ILogger<DaprSidecarHealthCheck> _logger;
+
 
     public DaprSidecarHealthCheck(DaprClient daprClient, ILogger<DaprSidecarHealthCheck> logger)
     {
         _daprClient = daprClient;
         _logger = logger;
     }
+
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
