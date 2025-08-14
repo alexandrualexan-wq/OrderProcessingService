@@ -11,6 +11,7 @@ set -e
 
 # Suffix for all generated variables
 INDEX=$(($RANDOM % 1000))
+echo "Index: $INDEX"
 
 # Azure Resource Group and Location
 RESOURCE_GROUP="alx-intro1-rg-$INDEX"
