@@ -183,8 +183,6 @@ az containerapp create \
   --max-replicas 1 \
   --cpu 0.25 \
   --memory 0.5Gi \
-  --probe-readiness-path '/health' \
-  --probe-liveness-path '/health' \
 
 echo "Deploying Shipping Service..."az containerapp create   --name "$SHIPPING_SERVICE_APP_NAME"   --resource-group "$RESOURCE_GROUP"   --environment "$CONTAINERAPPS_ENVIRONMENT"   --image "$ACR_NAME.azurecr.io/shipping-service:v1"   --target-port 80   --ingress 'internal'   --registry-server "$ACR_NAME.azurecr.io"   --env-vars "ASPNETCORE_URLS=http://0.0.0.0:80" "APPLICATIONINSIGHTS_CONNECTION_STRING=$APP_INSIGHTS_CONNECTION_STRING"   --enable-dapr   --dapr-app-id "$SHIPPING_SERVICE_APP_NAME"   --dapr-app-port 80   --dapr-log-level debug   --min-replicas 1   --max-replicas 1   --cpu 0.25   --memory 0.5Gi   --probe-readiness-path '/health'   --probe-liveness-path '/health' \
 
@@ -206,8 +204,7 @@ az containerapp create \
   --max-replicas 1 \
   --cpu 0.25 \
   --memory 0.5Gi \
-  --probe-readiness-path '/health' \
-  --probe-liveness-path '/health' \
+
 
 echo "Deploying Dapr Dashboard..."
 az containerapp create \
