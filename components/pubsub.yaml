@@ -1,12 +1,25 @@
-apiVersion: dapr.io/v1alpha1
-kind: Component
-metadata:
-  name: pubsub
-spec:
-  type: pubsub.redis
-  version: v1
-  metadata:
-  - name: redisHost
-    value: redis:6379
-  - name: redisPassword
-    value: ""
+apiVersion: dapr.io/v1alpha1  
+kind: Component  
+metadata:  
+  name: pubsub  
+spec:  
+  type: pubsub.redis  
+  version: v1  
+  metadata:  
+    - name: redisHost  
+      value: redis:6379  
+    - name: redisPassword  
+      value: ""  
+    # Optional: Enable consumer groups to allow multiple parallel consumers  
+    - name: consumerID  
+      value: "dapr-consumer"  # Unique ID per subscriber instance (set per service)  
+    # Retry policy tuning  
+    - name: maxRetries  
+      value: "10"  
+    - name: backOffDuration  
+      value: "2s"  
+    - name: backOffMaxDuration  
+      value: "10s"  
+    # Optional: Dead letter queue (DLQ) topic name  
+    - name: deadLetterTopic  
+      value: "dead-letter-queue"
