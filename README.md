@@ -4,11 +4,7 @@ This project demonstrates a complete, containerized microservices application us
 
 ## System Description
 
-The system consists of three microservices:
-
-*   **OrderService (Producer)**: This service acts as the order generator. It creates a new customer order every second, publishes an `Order` event to a message broker, and saves the order to an in-memory database.
-*   **ShippingService (Consumer)**: This service subscribes to the `orders` topic. When it receives an `Order` event, it processes the order, creates a `Shipment` record, and stores it in its own in-memory database.
-*   **NotificationService (Consumer)**: This service also subscribes to the `orders` topic. When it receives an `Order` event, it creates a `Notification` record and stores it in its in-memory database, simulating sending a confirmation to the customer.
+The overall system uses a producer, the **OrderService**, that generates orders and saves them to an in-memory database. Two consumers, the **NotificationService** and the **ShippingService**, receive messages from the OrderService, process the orders, and save records to their own in-memory databases.
 
 ## Architecture
 
@@ -37,7 +33,10 @@ To run the application locally, you will need Docker Desktop and the .NET 8 SDK.
     docker-compose up --build
     ```
 
-For screenshots of the local Docker container implementation and Postman requests, see the `docker screenshots` folder.
+The `docker screenshots` folder contains images that visually document the local development environment, including:
+
+*   A screenshot of the running Docker containers.
+*   Screenshots of Postman requests to the local endpoints for each service, showing how to test the application and the expected responses.
 
 ### Local Endpoints
 
@@ -80,7 +79,10 @@ The script will:
 *   Provision all the necessary Azure resources, including Azure Container Apps, Redis, and Application Insights.
 *   Deploy the services to the Azure Container Apps environment.
 
-For screenshots of the deployed Azure containers and Postman requests, see the `azure screenshots` folder.
+The `azure screenshots` folder contains images that visually document the Azure deployment, including:
+
+*   A screenshot of the deployed container apps in the Azure portal.
+*   Screenshots of Postman requests to the public endpoint of the deployed `OrderService`.
 
 ### Azure Endpoints
 
