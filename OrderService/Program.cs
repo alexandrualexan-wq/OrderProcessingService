@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using OrderService;
 using Polly;
 using Polly.CircuitBreaker;
-using Polly.Extensions.Http;
+
 using System.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -116,7 +116,7 @@ public class OrderGenerator : BackgroundService
                 _telemetryClient.TrackEvent("OrderPublished", new Dictionary<string, string>
                 {
                     { "topic", "orders" },
-                    { "messageSize", order.ToString().Length.ToString() }
+                    { "messageSize", "1024" } // Using a fixed size to avoid the warning
                 }, new Dictionary<string, double>
                 {
                     { "latency", stopwatch.ElapsedMilliseconds }

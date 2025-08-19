@@ -90,7 +90,7 @@ public class NotificationsController : ControllerBase
     public IActionResult HandleDeadLetter(object message)
     {
         _logger.LogError("Received message from dead-letter queue: {Message}", message);
-        _telemetryClient.TrackEvent("DeadLetterMessageReceived", new Dictionary<string, string> { { "message", message.ToString() } });
+        _telemetryClient.TrackEvent("DeadLetterMessageReceived", new Dictionary<string, string> { { "message", message?.ToString() ?? "null" } });
         return Ok();
     }
 
