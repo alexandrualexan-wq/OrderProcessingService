@@ -18,7 +18,7 @@ var app = builder.Build();
 app.UseCloudEvents();
 app.MapSubscribeHandler();
 app.MapControllers();
-app.MapGet("/healthz", () => "OK");
+app.MapGet("/health", () => "OK");
 
 app.Lifetime.ApplicationStarted.Register(() =>
 {

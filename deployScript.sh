@@ -180,8 +180,8 @@ az containerapp create \
   --max-replicas 1 \
   --cpu 0.25 \
   --memory 0.5Gi \
-  --probe-readiness-path /healthz \
-  --probe-liveness-path /healthz
+  --probe-readiness-path /health \
+  --probe-liveness-path /health
 
 echo "Deploying Shipping Service..."
 az containerapp create \
@@ -201,8 +201,8 @@ az containerapp create \
   --max-replicas 1 \
   --cpu 0.25 \
   --memory 0.5Gi \
-  --probe-readiness-path /healthz \
-  --probe-liveness-path /healthz
+  --probe-readiness-path /health \
+  --probe-liveness-path /health
 
 echo "Deploying Notification Service..."
 az containerapp create \
@@ -222,8 +222,8 @@ az containerapp create \
   --max-replicas 1 \
   --cpu 0.25 \
   --memory 0.5Gi \
-  --probe-readiness-path /healthz \
-  --probe-liveness-path /healthz
+  --probe-readiness-path /health \
+  --probe-liveness-path /health
 
 echo "Deploying Dapr Dashboard..."
 az containerapp create \

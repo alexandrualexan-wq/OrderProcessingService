@@ -22,7 +22,7 @@ var app = builder.Build();
 
 app.UseCloudEvents();
 app.MapControllers();
-app.MapGet("/healthz", () => "OK");
+app.MapGet("/health", () => "OK");
 
 app.Lifetime.ApplicationStarted.Register(() => 
 {

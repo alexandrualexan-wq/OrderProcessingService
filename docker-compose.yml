@@ -43,7 +43,7 @@ services:
       - ASPNETCORE_URLS=http://+:80
       - DAPR_API_TOKEN=my-secret
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/healthz"]
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
       interval: 10s
       timeout: 10s
       retries: 5
@@ -80,7 +80,7 @@ services:
       - ASPNETCORE_URLS=http://+:80
       - DAPR_API_TOKEN=my-secret
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/healthz"]
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
       interval: 10s
       timeout: 10s
       retries: 5
@@ -117,7 +117,7 @@ services:
       - ASPNETCORE_URLS=http://+:80
       - DAPR_API_TOKEN=my-secret
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/healthz"]
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
       interval: 10s
       timeout: 10s
       retries: 5
