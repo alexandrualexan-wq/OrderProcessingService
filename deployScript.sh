@@ -133,30 +133,25 @@ sleep 10
 # --- 4. Configure Dapr Redis Pub/Sub Component ---
 # This section configures a Dapr pub/sub component for the Container Apps environment.
 cat <<EOF > "$DAPR_COMPONENT_YAML_FILE"
-apiVersion: dapr.io/v1alpha1
-kind: Component
+componentType: pubsub.redis
+version: v1
 metadata:
-  name: $DAPR_PUBSUB_COMPONENT_NAME
-spec:
-  type: pubsub.redis
-  version: v1
-  metadata:
-  - name: redisHost
-    value: "$REDIS_APP_NAME:6379"
-  - name: redisPassword
-    value: ""
-  - name: maxRetries
-    value: "10"
-  - name: backOffDuration
-    value: "2s"
-  - name: backOffMaxDuration
-    value: "10s"
-  - name: deadLetterTopic
-    value: "dead-letter-queue"
-  scopes:
-  - $ORDER_SERVICE_APP_NAME
-  - $SHIPPING_SERVICE_APP_NAME
-  - $NOTIFICATION_SERVICE_APP_NAME
+- name: redisHost
+  value: "$REDIS_APP_NAME:6379"
+- name: redisPassword
+  value: ""
+- name: maxRetries
+  value: "10"
+- name: backOffDuration
+  value: "2s"
+- name: backOffMaxDuration
+  value: "10s"
+- name: deadLetterTopic
+  value: "dead-letter-queue"
+scopes:
+- $ORDER_SERVICE_APP_NAME
+- $SHIPPING_SERVICE_APP_NAME
+- $NOTIFICATION_SERVICE_APP_NAME
 EOF
 
 
