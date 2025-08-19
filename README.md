@@ -8,6 +8,8 @@ The system is designed to be run locally with Docker Compose and is structured f
 
 The architecture consists of three microservices communicating indirectly through a Dapr pub/sub message broker (Redis for local development). This decoupled design is resilient, scalable, and extensible.
 
+**Note on Production Environments**: For a production environment, it is recommended to replace the in-memory databases with a managed, persistent database service like Azure SQL Database or Azure Cosmos DB. Similarly, the Redis instance should be replaced with a managed service like Azure Cache for Redis.
+
 ![High-Level Architecture](docs/highLevelArhitecture.png)
 
 ```mermaid
@@ -67,7 +69,7 @@ The communication between services is handled by Dapr's pub/sub building block. 
 
 Here are the key configuration details:
 
-*   **Pub/Sub Component Name**: The Dapr component for the message broker is named `redis-pubsub` in Azure and `pubsub` locally.
+*   **Pub/Sub Component Name**: The Dapr component for the message broker is named `redis-pubsub` for both local and Azure environments.
 *   **Topic Name**: All order-related events are published to the `orders` topic.
 *   **Dead Letter Topic**: A `dead-letter-queue` topic is configured to send messages that fail processing.
 *   **Retry Policy**: The component is configured with a retry policy with exponential backoff.
@@ -171,14 +173,28 @@ When deployed to Azure, you can view the telemetry in the Application Insights r
 
 ## Resiliency and Retry Logic
 
-The application uses Polly, a .NET resilience and transient-fault-handling library, to implement retry logic for key operations.
+The application uses Polly, a .NET resilience and transient-fault-handling library, to implement advanced resiliency patterns.
 
 ### Retry Policies:
 
 *   **Dapr Pub/Sub Publishing**: The `OrderService` uses an exponential backoff retry policy when publishing messages to Dapr. This helps to handle transient network issues when communicating with the Dapr sidecar.
-*   **Database Operations**: All services use a simple retry policy with increasing delays for database operations. This is to demonstrate the pattern, even though the in-memory database is unlikely to have transient faults.
+*   **Database Operations**: All services use a simple retry policy with increasing delays for database operations.
 
-These retry policies help to make the application more resilient to transient failures and improve the overall reliability of the system.
+### Circuit Breaker:
+
+*   A circuit breaker policy is implemented for all database operations and for Dapr pub/sub calls. If a certain number of consecutive failures occur, the circuit will open for a configured period, and subsequent calls will fail immediately without attempting to connect to the database or Dapr. This prevents the application from overwhelming a struggling downstream service.
+
+### Fallback:
+
+*   The `OrderService` implements a fallback policy for Dapr pub/sub calls. If a message fails to be published after all retries, the fallback policy will be executed, which logs the error.
+
+## Idempotency
+
+The subscriber services (`ShippingService` and `NotificationService`) are designed to be idempotent. This means that if they receive the same message more than once, they will not process it multiple times. This is achieved by checking if a record for the given order ID already exists in the database before creating a new one.
+
+## Dead-letter Queue
+
+The Dapr pub/sub component is configured with a `deadLetterTopic`. If a message fails to be processed by a subscriber after all retries, Dapr will send the message to the `dead-letter-queue` topic. The subscriber services have a dedicated endpoint to handle messages from this queue, which currently just logs the message. In a real-world scenario, you would have a separate process to monitor the dead-letter queue and take appropriate action, such as re-processing the message or notifying an administrator.
 
 ## Redis Configuration
 

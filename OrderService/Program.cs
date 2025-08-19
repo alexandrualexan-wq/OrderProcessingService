@@ -4,6 +4,7 @@ using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.EntityFrameworkCore;
 using OrderService;
 using Polly;
+using Polly.CircuitBreaker;
 using Polly.Extensions.Http;
 using System.Diagnostics;
 
@@ -54,6 +55,7 @@ public class OrderGenerator : BackgroundService
     private readonly DaprClient _daprClient;
     private readonly IServiceProvider _serviceProvider;
     private readonly TelemetryClient _telemetryClient;
+    private static readonly AsyncCircuitBreakerPolicy _daprCircuitBreakerPolicy = Policy.Handle<Exception>().CircuitBreakerAsync(5, TimeSpan.FromSeconds(60));
 
     public OrderGenerator(ILogger<OrderGenerator> logger, DaprClient daprClient, IServiceProvider serviceProvider, TelemetryClient telemetryClient)
     {
@@ -71,6 +73,12 @@ public class OrderGenerator : BackgroundService
             {
                 _logger.LogWarning(ex, "Error publishing message. Retrying in {Time}s", time.TotalSeconds);
             });
+
+        var daprFallbackPolicy = Policy.Handle<Exception>().FallbackAsync(async (ct) => 
+        {
+            _logger.LogError("Failed to publish message after all retries. Dapr circuit breaker state: {State}", _daprCircuitBreakerPolicy.CircuitState);
+            await Task.CompletedTask;
+        });
 
         var dbRetryPolicy = Policy
             .Handle<Exception>()
@@ -99,9 +107,9 @@ public class OrderGenerator : BackgroundService
             try
             {
                 var stopwatch = Stopwatch.StartNew();
-                await daprRetryPolicy.ExecuteAsync(async () =>
+                await daprFallbackPolicy.WrapAsync(daprRetryPolicy.WrapAsync(_daprCircuitBreakerPolicy)).ExecuteAsync(async () =>
                 {
-                    await _daprClient.PublishEventAsync("pubsub", "orders", order, stoppingToken);
+                    await _daprClient.PublishEventAsync("redis-pubsub", "orders", order, stoppingToken);
                 });
                 stopwatch.Stop();
 

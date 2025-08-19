@@ -3,6 +3,7 @@ using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Polly;
+using Polly.CircuitBreaker;
 using System.Diagnostics;
 
 namespace ShippingService.Controllers;
@@ -14,6 +15,7 @@ public class ShipmentsController : ControllerBase
     private readonly AppDbContext _dbContext;
     private readonly ILogger<ShipmentsController> _logger;
     private readonly TelemetryClient _telemetryClient;
+    private static readonly AsyncCircuitBreakerPolicy _circuitBreakerPolicy = Policy.Handle<Exception>().CircuitBreakerAsync(5, TimeSpan.FromSeconds(60));
 
     public ShipmentsController(AppDbContext dbContext, ILogger<ShipmentsController> logger, TelemetryClient telemetryClient)
     {
@@ -22,7 +24,7 @@ public class ShipmentsController : ControllerBase
         _telemetryClient = telemetryClient;
     }
 
-    [Topic("pubsub", "orders")]
+    [Topic("redis-pubsub", "orders")]
     [HttpPost("/orders")] // Route for Dapr to post to
     public async Task<IActionResult> CreateShipmentFromOrder(Order order)
     {
@@ -30,6 +32,12 @@ public class ShipmentsController : ControllerBase
         var stopwatch = Stopwatch.StartNew();
         try
         {
+            if (await _dbContext.Shipments.AnyAsync(s => s.OrderId == order.OrderId))
+            {
+                _logger.LogWarning("Shipment for order {OrderId} already exists.", order.OrderId);
+                return Ok(); // Idempotency check
+            }
+
             _logger.LogInformation("Received Order: {OrderId}", order.OrderId);
             _telemetryClient.TrackEvent("OrderReceived", new Dictionary<string, string> { { "topic", "orders" }, { "orderId", order.OrderId.ToString() } });
 
@@ -48,7 +56,7 @@ public class ShipmentsController : ControllerBase
                     _logger.LogWarning(ex, "Error saving shipment to database. Retrying in {Time}s", time.TotalSeconds);
                 });
 
-            await dbRetryPolicy.ExecuteAsync(async () =>
+            await dbRetryPolicy.WrapAsync(_circuitBreakerPolicy).ExecuteAsync(async () =>
             {
                 _dbContext.Shipments.Add(shipment);
                 await _dbContext.SaveChangesAsync();
@@ -60,6 +68,11 @@ public class ShipmentsController : ControllerBase
 
             return Ok();
         }
+        catch (BrokenCircuitException)
+        {
+            _logger.LogError("Database circuit breaker is open. Could not process shipment for order: {OrderId}", order.OrderId);
+            return Problem("Database is unavailable.", statusCode: 503);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing shipment for order: {OrderId}", order.OrderId);
@@ -70,6 +83,15 @@ public class ShipmentsController : ControllerBase
         {
             activity.Stop();
         }
+    }
+
+    [Topic("redis-pubsub", "dead-letter-queue")]
+    [HttpPost("/dead-letter-queue")]
+    public IActionResult HandleDeadLetter(object message)
+    {
+        _logger.LogError("Received message from dead-letter queue: {Message}", message);
+        _telemetryClient.TrackEvent("DeadLetterMessageReceived", new Dictionary<string, string> { { "message", message.ToString() } });
+        return Ok();
     }
 
     [HttpGet]
