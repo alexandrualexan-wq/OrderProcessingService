@@ -8,8 +8,7 @@ spec:
   metadata:  
     - name: redisHost  
       value: redis:6379  
-    - name: redisPassword  
-      value: ""  
+      
     # Optional: Enable consumer groups to allow multiple parallel consumers  
     - name: consumerID  
       value: "dapr-consumer"  # Unique ID per subscriber instance (set per service)  

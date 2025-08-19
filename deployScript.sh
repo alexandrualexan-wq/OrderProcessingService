@@ -138,8 +138,7 @@ version: v1
 metadata:
 - name: redisHost
   value: "$REDIS_APP_NAME:6379"
-- name: redisPassword
-  value: ""
+
 - name: maxRetries
   value: "10"
 - name: backOffDuration
