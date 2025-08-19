@@ -147,6 +147,35 @@ While the application is running, you can access the following endpoints in your
 └── README.md               # This file
 ```
 
+## Telemetry and Monitoring
+
+The application is instrumented with Azure Application Insights for end-to-end monitoring and distributed tracing.
+
+### Features:
+
+*   **Distributed Tracing**: Traces are correlated across services, providing a unified view of a request as it flows through the system.
+*   **Custom Telemetry**: Custom events and metrics are tracked for key operations:
+    *   **OrderService**: Tracks the publishing of orders, including latency and message size.
+    *   **ShippingService & NotificationService**: Track the processing of incoming messages and the duration of the operation.
+*   **Exception Tracking**: Unhandled exceptions are automatically captured and sent to Application Insights for analysis.
+*   **Service Health**: Service startup and shutdown events are logged. Health check endpoints (`/healthz`) are available for each service.
+*   **Dapr Telemetry**: Dapr is configured to send its telemetry to Application Insights, providing insights into the Dapr sidecars and components.
+
+### Viewing Telemetry:
+
+When deployed to Azure, you can view the telemetry in the Application Insights resource that is created by the deployment script. The "Application Map" feature provides a visual representation of the services and their dependencies, and you can drill down into individual requests to see the end-to-end trace.
+
+## Resiliency and Retry Logic
+
+The application uses Polly, a .NET resilience and transient-fault-handling library, to implement retry logic for key operations.
+
+### Retry Policies:
+
+*   **Dapr Pub/Sub Publishing**: The `OrderService` uses an exponential backoff retry policy when publishing messages to Dapr. This helps to handle transient network issues when communicating with the Dapr sidecar.
+*   **Database Operations**: All services use a simple retry policy with increasing delays for database operations. This is to demonstrate the pattern, even though the in-memory database is unlikely to have transient faults.
+
+These retry policies help to make the application more resilient to transient failures and improve the overall reliability of the system.
+
 ## Docker Compose Details
 
 The `docker-compose.yml` file is configured to run the entire system locally. It defines the following services, all connected to a common `dapr-network`:
@@ -214,20 +243,23 @@ The script creates the following resources in Azure:
     *   **Purpose**: A private Docker container registry used to store and manage the container images for the `OrderService`, `ShippingService`, and `NotificationService`.
 
 *   **Azure Log Analytics Workspace**:
-    *   **Purpose**: Used to collect and analyze logs and metrics from the Azure Container Apps environment, providing insights into the health and performance of the applications.
+    *   **Purpose**: Used to collect and analyze logs and metrics from the Azure Container Apps environment.
+
+*   **Azure Application Insights**:
+    *   **Purpose**: Used for application performance monitoring and distributed tracing. It is connected to the Log Analytics Workspace.
 
 *   **Azure Container Apps Environment**:
-    *   **Purpose**: A fully managed, serverless container service that provides the execution environment for the containerized applications. It is connected to the Log Analytics Workspace for monitoring.
+    *   **Purpose**: A fully managed, serverless container service that provides the execution environment for the containerized applications. It is connected to the Log Analytics Workspace and Application Insights.
 
 *   **Azure Container Apps**:
     *   **`order-service`**: The main application, configured with Dapr enabled and an external ingress to allow placing orders.
-    *   **`shipping-service`**: A subscriber service, configured with Dapr enabled and an internal ingress, as it only needs to be accessible from within the environment.
+    *   **`shipping-service`**: A subscriber service, configured with Dapr enabled and an internal ingress.
     *   **`notification-service`**: A subscriber service, also configured with Dapr enabled and an internal ingress.
     *   **`redis`**: The Redis message broker, deployed as a container app with internal ingress.
     *   **`dapr-dashboard`**: The Dapr dashboard, deployed with an external ingress for monitoring.
 
 *   **Dapr Pub/Sub Component**:
-    *   **Purpose**: A Dapr component is configured at the environment level to use the deployed Redis container app as the pub/sub message broker. This component is scoped to the application services.
+    *   **Purpose**: A Dapr component is configured at the environment level to use the deployed Redis container app as the pub/sub message broker.
 
 ### Deployment Script Details (`deployScript.sh`)
 

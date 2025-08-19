@@ -1,17 +1,41 @@
 using Dapr.Client;
+using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.EntityFrameworkCore;
 using OrderService;
+using Polly;
+using Polly.Extensions.Http;
+using System.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Add Application Insights telemetry
+builder.Services.AddApplicationInsightsTelemetry();
+
 builder.Services.AddDbContext<AppDbContext>(opt => opt.UseInMemoryDatabase("OrderDb"));
 builder.Services.AddDaprClient();
 builder.Services.AddHostedService<OrderGenerator>();
 builder.Services.AddHostedService<DaprSidecarHealthCheck>();
 builder.Services.AddControllers().AddDapr();
+
 var app = builder.Build();
+
 app.UseCloudEvents();
 app.MapControllers();
 app.MapGet("/healthz", () => "OK");
+
+app.Lifetime.ApplicationStarted.Register(() => 
+{
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogInformation("OrderService started at {Timestamp}", DateTime.UtcNow);
+});
+
+app.Lifetime.ApplicationStopping.Register(() =>
+{
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogInformation("OrderService stopping at {Timestamp}", DateTime.UtcNow);
+});
+
 app.Run();
 
 
@@ -29,19 +53,32 @@ public class OrderGenerator : BackgroundService
     private readonly ILogger<OrderGenerator> _logger;
     private readonly DaprClient _daprClient;
     private readonly IServiceProvider _serviceProvider;
+    private readonly TelemetryClient _telemetryClient;
 
-
-    public OrderGenerator(ILogger<OrderGenerator> logger, DaprClient daprClient, IServiceProvider serviceProvider)
+    public OrderGenerator(ILogger<OrderGenerator> logger, DaprClient daprClient, IServiceProvider serviceProvider, TelemetryClient telemetryClient)
     {
         _logger = logger;
         _daprClient = daprClient;
         _serviceProvider = serviceProvider;
+        _telemetryClient = telemetryClient;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // The DaprSidecarHealthCheck will wait for the sidecar to be ready.
-        // This service can start publishing messages immediately.
+        var daprRetryPolicy = Policy
+            .Handle<Exception>()
+            .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)), (ex, time) =>
+            {
+                _logger.LogWarning(ex, "Error publishing message. Retrying in {Time}s", time.TotalSeconds);
+            });
+
+        var dbRetryPolicy = Policy
+            .Handle<Exception>()
+            .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(retryAttempt), (ex, time) =>
+            {
+                _logger.LogWarning(ex, "Error saving to database. Retrying in {Time}s", time.TotalSeconds);
+            });
+
         while (!stoppingToken.IsCancellationRequested)
         {
             await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
@@ -58,39 +95,45 @@ public class OrderGenerator : BackgroundService
                 TotalAmount = 1225.50m
             };
 
-
-            // Publish the event with retry logic
-            const int maxRetries = 3;
-            for (int i = 0; i < maxRetries; i++)
+            var activity = new Activity("PublishOrder").Start();
+            try
             {
-                try
+                var stopwatch = Stopwatch.StartNew();
+                await daprRetryPolicy.ExecuteAsync(async () =>
                 {
-                    _logger.LogInformation("Publishing order: {OrderId}", order.OrderId);
                     await _daprClient.PublishEventAsync("pubsub", "orders", order, stoppingToken);
-                    _logger.LogInformation("Published Order: {OrderId}", order.OrderId);
+                });
+                stopwatch.Stop();
 
+                _telemetryClient.TrackEvent("OrderPublished", new Dictionary<string, string>
+                {
+                    { "topic", "orders" },
+                    { "messageSize", order.ToString().Length.ToString() }
+                }, new Dictionary<string, double>
+                {
+                    { "latency", stopwatch.ElapsedMilliseconds }
+                });
 
-                    // Save to in-memory database
+                _logger.LogInformation("Published Order: {OrderId}", order.OrderId);
+
+                await dbRetryPolicy.ExecuteAsync(async () =>
+                {
                     using (var scope = _serviceProvider.CreateScope())
                     {
                         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
                         dbContext.Orders.Add(order);
                         await dbContext.SaveChangesAsync(stoppingToken);
                     }
-                    break; // Success, exit the retry loop
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error publishing order: {OrderId}. Retry {RetryCount}/{MaxRetries}", order.OrderId, i + 1, maxRetries);
-                    if (i < maxRetries - 1)
-                    {
-                        await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken); // Wait before retrying
-                    }
-                    else
-                    {
-                        _logger.LogError("Failed to publish order: {OrderId} after {MaxRetries} retries.", order.OrderId, maxRetries);
-                    }
-                }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to publish order: {OrderId}", order.OrderId);
+                _telemetryClient.TrackException(ex);
+            }
+            finally
+            {
+                activity.Stop();
             }
         }
     }
@@ -112,8 +155,19 @@ public class DaprSidecarHealthCheck : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("Waiting for Dapr sidecar to be ready...");
-        await _daprClient.WaitForSidecarAsync(stoppingToken);
-        _logger.LogInformation("Dapr sidecar is ready.");
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                await _daprClient.WaitForSidecarAsync(stoppingToken);
+                _logger.LogInformation("Dapr sidecar is ready.");
+                break;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Dapr sidecar is not ready yet. Retrying in 5 seconds.");
+                await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
+            }
+        }
     }
 }

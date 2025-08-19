@@ -1,17 +1,37 @@
 using Dapr.Client;
+using Microsoft.ApplicationInsights;
 using Microsoft.EntityFrameworkCore;
 using ShippingService;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Add Application Insights telemetry
+builder.Services.AddApplicationInsightsTelemetry();
+
 builder.Services.AddDbContext<AppDbContext>(opt => opt.UseInMemoryDatabase("ShippingDb"));
 builder.Services.AddDaprClient();
 builder.Services.AddHostedService<DaprSidecarHealthCheck>();
 builder.Services.AddControllers().AddDapr();
+
 var app = builder.Build();
+
 app.UseCloudEvents();
 app.MapSubscribeHandler();
 app.MapControllers();
 app.MapGet("/healthz", () => "OK");
+
+app.Lifetime.ApplicationStarted.Register(() =>
+{
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogInformation("ShippingService started at {Timestamp}", DateTime.UtcNow);
+});
+
+app.Lifetime.ApplicationStopping.Register(() =>
+{
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogInformation("ShippingService stopping at {Timestamp}", DateTime.UtcNow);
+});
+
 app.Run();
 
 // 2. DEFINE MODELS AND DBCONTEXT (Must come after top-level statements)
@@ -43,8 +63,19 @@ public class DaprSidecarHealthCheck : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("Waiting for Dapr sidecar to be ready...");
-        await _daprClient.WaitForSidecarAsync(stoppingToken);
-        _logger.LogInformation("Dapr sidecar is ready.");
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                await _daprClient.WaitForSidecarAsync(stoppingToken);
+                _logger.LogInformation("Dapr sidecar is ready.");
+                break;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Dapr sidecar is not ready yet. Retrying in 5 seconds.");
+                await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
+            }
+        }
     }
 }

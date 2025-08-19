@@ -25,6 +25,9 @@ ACR_NAME="alxintro1$INDEX"
 # Azure Container Apps environment name
 CONTAINERAPPS_ENVIRONMENT="alx-container-apps-environment-$INDEX"
 
+# Application Insights name
+APP_INSIGHTS_NAME="alx-appinsights-$INDEX"
+
 # Application names
 ORDER_SERVICE_APP_NAME="order-service-$INDEX"
 SHIPPING_SERVICE_APP_NAME="shipping-service-$INDEX"
@@ -88,6 +91,15 @@ az monitor log-analytics workspace create \
 echo "Fetching Log Analytics credentials..."
 LOG_ANALYTICS_WORKSPACE_CLIENT_ID=$(az monitor log-analytics workspace show --query customerId -g "$RESOURCE_GROUP" -n "$LOG_ANALYTICS_WORKSPACE" --out tsv)
 LOG_ANALYTICS_WORKSPACE_CLIENT_SECRET=$(az monitor log-analytics workspace get-shared-keys --query primarySharedKey -g "$RESOURCE_GROUP" -n "$LOG_ANALYTICS_WORKSPACE" --out tsv)
+
+echo "Creating Application Insights instance: $APP_INSIGHTS_NAME"
+az monitor app-insights component create \
+  --app "$APP_INSIGHTS_NAME" \
+  --location "$LOCATION" \
+  --resource-group "$RESOURCE_GROUP" \
+  --workspace "$LOG_ANALYTICS_WORKSPACE"
+
+APP_INSIGHTS_CONNECTION_STRING=$(az monitor app-insights component show --app "$APP_INSIGHTS_NAME" -g "$RESOURCE_GROUP" --query connectionString -o tsv)
 
 echo "Creating Container Apps environment: $CONTAINERAPPS_ENVIRONMENT"
 az containerapp env create \
@@ -156,18 +168,20 @@ az containerapp create \
   --resource-group "$RESOURCE_GROUP" \
   --environment "$CONTAINERAPPS_ENVIRONMENT" \
   --image "$ACR_NAME.azurecr.io/order-service:v1" \
-  --target-port 8080 \
+  --target-port 80 \
   --ingress 'external' \
   --registry-server "$ACR_NAME.azurecr.io" \
-  --env-vars "ASPNETCORE_URLS=http://+:8080" \
+  --env-vars "ASPNETCORE_URLS=http://+:80" "APPLICATIONINSIGHTS_CONNECTION_STRING=$APP_INSIGHTS_CONNECTION_STRING" \
   --enable-dapr \
   --dapr-app-id "$ORDER_SERVICE_APP_NAME" \
-  --dapr-app-port 8080 \
+  --dapr-app-port 80 \
   --dapr-log-level debug \
   --min-replicas 1 \
   --max-replicas 1 \
   --cpu 0.25 \
   --memory 0.5Gi \
+  --probe-readiness-path /healthz \
+  --probe-liveness-path /healthz
 
 echo "Deploying Shipping Service..."
 az containerapp create \
@@ -175,18 +189,20 @@ az containerapp create \
   --resource-group "$RESOURCE_GROUP" \
   --environment "$CONTAINERAPPS_ENVIRONMENT" \
   --image "$ACR_NAME.azurecr.io/shipping-service:v1" \
-  --target-port 8080 \
+  --target-port 80 \
   --ingress 'internal' \
   --registry-server "$ACR_NAME.azurecr.io" \
-  --env-vars "ASPNETCORE_URLS=http://+:8080" \
+  --env-vars "ASPNETCORE_URLS=http://+:80" "APPLICATIONINSIGHTS_CONNECTION_STRING=$APP_INSIGHTS_CONNECTION_STRING" \
   --enable-dapr \
   --dapr-app-id "$SHIPPING_SERVICE_APP_NAME" \
-  --dapr-app-port 8080 \
+  --dapr-app-port 80 \
   --dapr-log-level debug \
   --min-replicas 1 \
   --max-replicas 1 \
   --cpu 0.25 \
   --memory 0.5Gi \
+  --probe-readiness-path /healthz \
+  --probe-liveness-path /healthz
 
 echo "Deploying Notification Service..."
 az containerapp create \
@@ -194,18 +210,20 @@ az containerapp create \
   --resource-group "$RESOURCE_GROUP" \
   --environment "$CONTAINERAPPS_ENVIRONMENT" \
   --image "$ACR_NAME.azurecr.io/notification-service:v1" \
-  --target-port 8080 \
+  --target-port 80 \
   --ingress 'internal' \
   --registry-server "$ACR_NAME.azurecr.io" \
-  --env-vars "ASPNETCORE_URLS=http://+:8080" \
+  --env-vars "ASPNETCORE_URLS=http://+:80" "APPLICATIONINSIGHTS_CONNECTION_STRING=$APP_INSIGHTS_CONNECTION_STRING" \
   --enable-dapr \
   --dapr-app-id "$NOTIFICATION_SERVICE_APP_NAME" \
-  --dapr-app-port 8080 \
+  --dapr-app-port 80 \
   --dapr-log-level debug \
   --min-replicas 1 \
   --max-replicas 1 \
   --cpu 0.25 \
   --memory 0.5Gi \
+  --probe-readiness-path /healthz \
+  --probe-liveness-path /healthz
 
 echo "Deploying Dapr Dashboard..."
 az containerapp create \
